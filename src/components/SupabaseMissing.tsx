@@ -5,7 +5,7 @@ export function SupabaseMissing() {
       <p className="mt-2 text-muted">
         Para organizadores entrarem e cadastrarem eventos, conecte o Supabase (veja o README: variáveis
         <code className="mx-1 text-white">NEXT_PUBLIC_SUPABASE_URL</code>e
-        <code className="mx-1 text-white">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>).
+        <code className="mx-1 text-white">NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code>).
       </p>
     </div>
   );

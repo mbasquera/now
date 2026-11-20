@@ -1,12 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { isSupabaseConfigured } from "./public";
+import { SUPABASE_KEY, SUPABASE_URL, isSupabaseConfigured } from "./env";
 
 /** Cliente Supabase com a sessão do usuário (Server Components, Actions e Route Handlers). */
 export async function createSupabaseServer() {
   const cookieStore = await cookies();
-  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  return createServerClient(SUPABASE_URL!, SUPABASE_KEY!, {
     cookies: {
       getAll: () => cookieStore.getAll(),
       setAll: (list) => {

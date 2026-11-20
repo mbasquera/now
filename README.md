@@ -18,7 +18,7 @@ Abra http://localhost:3000. **Sem configurar nada**, o site já funciona com eve
 1. Crie um projeto em https://supabase.com.
 2. No **SQL Editor**, rode `supabase/migrations/0001_init.sql` (cria tabelas, regras de acesso e o bucket de fotos).
 3. Rode `supabase/seed.sql` (27 capitais, esportes e eventos de exemplo). Pode rodar de novo quando quiser: ele recria os eventos de exemplo com horários a partir de agora.
-4. Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Project Settings > API).
+4. Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (botão **Connect** do Supabase > App Frameworks > Next.js; o nome antigo `NEXT_PUBLIC_SUPABASE_ANON_KEY` também é aceito).
 5. Reinicie o `npm run dev`.
 
 Na Vercel, cadastre as mesmas duas variáveis em Settings > Environment Variables.

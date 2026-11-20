@@ -65,7 +65,7 @@ function explain(error: { message?: string; code?: string; details?: string }): 
   else if (code === "PGRST200" || /relationship/i.test(msg))
     hint = "O esquema do banco está incompleto. Rode de novo o supabase/migrations/0001_init.sql inteiro.";
   else if (/invalid api key|jwt|401|no api key/i.test(msg))
-    hint = "A chave NEXT_PUBLIC_SUPABASE_ANON_KEY está errada. Copie a chave anon/public em Project Settings > API.";
+    hint = "A chave do Supabase está errada. Copie a chave publishable (sb_publishable_...) do botão Connect do Supabase.";
   else if (/fetch failed|ENOTFOUND|getaddrinfo|Invalid URL/i.test(msg))
     hint = "Não deu para conectar ao Supabase. Confira NEXT_PUBLIC_SUPABASE_URL (ex.: https://xxxx.supabase.co).";
   return { hint, detail: (error.message ?? String(error)).slice(0, 300) };
