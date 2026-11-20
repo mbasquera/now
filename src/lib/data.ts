@@ -62,6 +62,8 @@ function explain(error: { message?: string; code?: string; details?: string }): 
   let hint = "Não foi possível ler os eventos do banco.";
   if (code === "PGRST205" || code === "42P01" || /does not exist|could not find the table/i.test(msg))
     hint = "As tabelas não existem no Supabase. Rode supabase/migrations/0001_init.sql e depois supabase/seed.sql no SQL Editor.";
+  else if (code === "42501" || /permission denied/i.test(msg))
+    hint = "O banco bloqueou a leitura. Rode supabase/migrations/0002_grants.sql no SQL Editor do Supabase.";
   else if (code === "PGRST200" || /relationship/i.test(msg))
     hint = "O esquema do banco está incompleto. Rode de novo o supabase/migrations/0001_init.sql inteiro.";
   else if (/invalid api key|jwt|401|no api key/i.test(msg))
