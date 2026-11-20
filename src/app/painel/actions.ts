@@ -98,7 +98,7 @@ export async function saveEvent(form: FormData) {
     ends_at: endsAt!.toISOString(),
     is_free: isFree,
     price_cents: priceCents,
-    ticket_url: opt(form, "ticket_url"),
+    ticket_url: isFree ? null : opt(form, "ticket_url"),
     image_url: imageUrl,
     // Toda edição volta para a fila de aprovação (admins aprovam na etapa 3).
     status: "pending" as const,

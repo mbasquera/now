@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CITIES } from "@/lib/cities";
 import { SPORTS } from "@/lib/sports";
 import { Field, inputCls } from "./form";
+import { PriceFields } from "./PriceFields";
 import { saveEvent } from "@/app/painel/actions";
 
 export type EventFormValues = {
@@ -75,20 +76,7 @@ export function EventForm({ values = {}, error }: { values?: EventFormValues; er
       </div>
       <p className="-mt-2 text-xs text-muted">Use o horário local da cidade do evento.</p>
 
-      <fieldset className="rounded-2xl border border-line p-4">
-        <label className="flex items-center gap-2 font-semibold">
-          <input type="checkbox" name="is_free" defaultChecked={v.is_free ?? true} className="h-5 w-5 accent-[#c6f432]" />
-          Entrada gratuita
-        </label>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <Field label="Preço (R$)" hint="Se for pago">
-            <input name="price" inputMode="decimal" defaultValue={v.price} placeholder="20,00" className={inputCls} />
-          </Field>
-          <Field label="Link do ingresso" hint="Opcional">
-            <input name="ticket_url" type="url" defaultValue={v.ticket_url ?? ""} className={inputCls} />
-          </Field>
-        </div>
-      </fieldset>
+      <PriceFields isFree={v.is_free ?? true} price={v.price ?? ""} ticketUrl={v.ticket_url ?? ""} />
 
       <Field label="Descrição">
         <textarea name="description" rows={4} defaultValue={v.description ?? ""} className={inputCls} />
