@@ -41,3 +41,28 @@ Na Vercel, cadastre as mesmas duas variáveis em Settings > Environment Variable
 - **Páginas públicas**: `/` (escolha da cidade, lembra a última), `/[cidade]` (lista com filtros de esporte, horário e preço; atualiza a cada minuto), `/evento/[id]` (detalhes, "Como chegar", contato do organizador).
 - **Área do organizador**: `/entrar` (Google ou link por e-mail), `/painel` (meus eventos e status), `/painel/perfil`, `/painel/eventos/novo` e `/painel/eventos/[id]` (criar/editar com foto). Todo evento criado ou editado fica *pendente* até aprovação.
 - **Moderação**: `/admin` (só para admins) mostra a fila de pendentes com Aprovar / Recusar (com motivo, que o organizador vê no painel).
+
+## Importação automática (futebol, basquete e vôlei)
+
+Além dos cadastros dos organizadores, o site busca sozinho os jogos dos próximos 7 dias na [API-Sports](https://api-sports.io): futebol (Séries A a D, Copa do Brasil, estaduais, regionais, feminino), basquete (NBB) e vôlei (Superliga). Só entram jogos nas capitais.
+
+**Para ativar:**
+
+1. No SQL Editor do Supabase, rode `supabase/migrations/0003_importacao.sql`.
+2. Crie uma conta grátis em https://dashboard.api-football.com e copie a **API Key** (a mesma chave vale para os três esportes).
+3. Na Vercel, em Settings > Environment Variables, cadastre:
+   - `API_SPORTS_KEY`: a chave da API-Sports.
+   - `SUPABASE_SECRET_KEY`: Supabase > Project Settings > API Keys > *Secret key* (`sb_secret_...`). Fica só no servidor.
+   - `CRON_SECRET`: qualquer texto longo e aleatório.
+4. Faça um novo deploy. A partir daí roda todo dia às 6h (Brasília), pelo `vercel.json`. Para rodar na hora, use o botão **Importar agora** no `/admin`, que também mostra o resultado das últimas importações.
+
+**Como funciona** (`src/lib/ingest/`):
+
+- Uma consulta por esporte por dia buscado (21 por execução), dentro das 100 por dia do plano grátis.
+- **Cidade:** no futebol vem do estádio informado pela API. No basquete e no vôlei a API não informa o local, então a cidade é deduzida pelo time mandante (`match-city.ts`, lista editável). Jogos fora das capitais são ignorados.
+- **Sem duplicar:** cada jogo é salvo com `source = 'api-sports'` e `external_id` únicos. Rodar de novo só atualiza horário e dados.
+- **Moderação:** jogos importados entram aprovados. Se você recusar um jogo, ele continua recusado nas próximas importações. Jogos adiados ou cancelados na fonte são recusados automaticamente e voltam se forem remarcados.
+- Cada campeonato vira um "organizador" (ex.: *Paulista - A1*), sem login.
+- O fim do jogo é estimado (futebol 2h, basquete 2h15, vôlei 2h30), porque a API só informa o início.
+
+**Limite do plano grátis:** se o `/admin` mostrar um erro dizendo que o plano grátis não tem acesso à temporada, é preciso assinar o plano pago do esporte em questão na API-Sports.

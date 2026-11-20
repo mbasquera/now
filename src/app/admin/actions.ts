@@ -23,3 +23,12 @@ export async function moderate(form: FormData) {
   revalidatePath("/admin");
   redirect("/admin");
 }
+
+/** Botão "Importar agora" do /admin. */
+export async function importNow() {
+  await requireAdmin();
+  const { runImport } = await import("@/lib/ingest/run");
+  await runImport("admin");
+  revalidatePath("/admin");
+  redirect("/admin");
+}
