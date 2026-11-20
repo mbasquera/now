@@ -27,7 +27,7 @@ Na Vercel, cadastre as mesmas duas variáveis em Settings > Environment Variable
 
 1. Em **Authentication > URL Configuration**, defina o *Site URL* (ex.: `https://seusite.vercel.app`) e adicione em *Redirect URLs*: `http://localhost:3000/auth/callback` e `https://seusite.vercel.app/auth/callback`.
 2. Login por e-mail (link mágico) já vem ativo. Para **Google**, ative em *Authentication > Providers > Google* com o Client ID/Secret do Google Cloud.
-3. Para virar **admin** (necessário na etapa de moderação), entre no site uma vez, crie seu perfil e rode no SQL Editor:
+3. Para virar **admin** (acesso a `/admin`), entre no site uma vez, crie seu perfil e rode no SQL Editor:
    ```sql
    update organizers set role = 'admin'
    where user_id = (select id from auth.users where email = 'seu@email.com');
@@ -40,7 +40,4 @@ Na Vercel, cadastre as mesmas duas variáveis em Settings > Environment Variable
 - **Moderação**: eventos têm status `pending`, `approved` ou `rejected`. O público só vê os aprovados (garantido por Row Level Security no banco).
 - **Páginas públicas**: `/` (escolha da cidade, lembra a última), `/[cidade]` (lista com filtros de esporte, horário e preço; atualiza a cada minuto), `/evento/[id]` (detalhes, "Como chegar", contato do organizador).
 - **Área do organizador**: `/entrar` (Google ou link por e-mail), `/painel` (meus eventos e status), `/painel/perfil`, `/painel/eventos/novo` e `/painel/eventos/[id]` (criar/editar com foto). Todo evento criado ou editado fica *pendente* até aprovação.
-
-## Próximas etapas
-
-- Painel `/admin` para aprovar ou rejeitar eventos.
+- **Moderação**: `/admin` (só para admins) mostra a fila de pendentes com Aprovar / Recusar (com motivo, que o organizador vê no painel).
