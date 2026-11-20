@@ -35,7 +35,7 @@ export default async function CityPage({ params, searchParams }: Props) {
   if (!city) notFound();
 
   const now = new Date();
-  const events = await getCityEvents(city.slug, now);
+  const { events, problem } = await getCityEvents(city.slug, now);
 
   const withState = events
     .map((e) => ({ event: e, state: getLiveState(e, now, city.timezone) }))
@@ -77,7 +77,15 @@ export default async function CityPage({ params, searchParams }: Props) {
         <Filters base={`/${city.slug}`} current={filters} />
       </div>
 
-      {withState.length === 0 ? (
+      {problem && (
+        <div className="mt-6 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 p-4 text-sm">
+          <p className="font-semibold text-yellow-300">⚠️ Site em configuração</p>
+          <p className="mt-1">{problem.hint}</p>
+          <p className="mt-2 break-words font-mono text-xs text-muted">{problem.detail}</p>
+        </div>
+      )}
+
+      {problem ? null : withState.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-line p-8 text-center">
           <p className="text-4xl">🏟️</p>
           <p className="mt-2 font-semibold">Nada por aqui com esses filtros.</p>

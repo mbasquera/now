@@ -53,8 +53,41 @@ function fromRow(r: EventRow): SportEvent {
   };
 }
 
-/** Eventos aprovados da cidade que ainda não terminaram (próximos 7 dias). */
-export async function getCityEvents(citySlug: string, now = new Date()): Promise<SportEvent[]> {
+export type DataProblem = { hint: string; detail: string };
+
+/** Traduz erros comuns de configuração do Supabase em uma dica para o dono do site. */
+function explain(error: { message?: string; code?: string; details?: string }): DataProblem {
+  const msg = `${error.message ?? ""} ${error.details ?? ""}`;
+  const code = error.code ?? "";
+  let hint = "Não foi possível ler os eventos do banco.";
+  if (code === "PGRST205" || code === "42P01" || /does not exist|could not find the table/i.test(msg))
+    hint = "As tabelas não existem no Supabase. Rode supabase/migrations/0001_init.sql e depois supabase/seed.sql no SQL Editor.";
+  else if (code === "PGRST200" || /relationship/i.test(msg))
+    hint = "O esquema do banco está incompleto. Rode de novo o supabase/migrations/0001_init.sql inteiro.";
+  else if (/invalid api key|jwt|401|no api key/i.test(msg))
+    hint = "A chave NEXT_PUBLIC_SUPABASE_ANON_KEY está errada. Copie a chave anon/public em Project Settings > API.";
+  else if (/fetch failed|ENOTFOUND|getaddrinfo|Invalid URL/i.test(msg))
+    hint = "Não deu para conectar ao Supabase. Confira NEXT_PUBLIC_SUPABASE_URL (ex.: https://xxxx.supabase.co).";
+  return { hint, detail: (error.message ?? String(error)).slice(0, 300) };
+}
+
+/**
+ * Eventos aprovados da cidade que ainda não terminaram (próximos 7 dias).
+ * Nunca lança: se o banco falhar, devolve a lista vazia e o problema para exibir.
+ */
+export async function getCityEvents(
+  citySlug: string,
+  now = new Date(),
+): Promise<{ events: SportEvent[]; problem: DataProblem | null }> {
+  try {
+    return { events: await fetchCityEvents(citySlug, now), problem: null };
+  } catch (e) {
+    console.error("[NOW] erro ao carregar eventos:", e);
+    return { events: [], problem: explain(e as { message?: string }) };
+  }
+}
+
+async function fetchCityEvents(citySlug: string, now: Date): Promise<SportEvent[]> {
   const limit = new Date(now.getTime() + LOOKAHEAD_DAYS * 86_400_000);
   const supabase = getSupabase();
 
@@ -78,17 +111,20 @@ export async function getCityEvents(citySlug: string, now = new Date()): Promise
 
 export async function getEvent(id: string): Promise<SportEvent | null> {
   const supabase = getSupabase();
+  if (supabase && !/^[0-9a-f-]{36}$/i.test(id)) return null;
   if (!supabase) return getMockEvents().find((e) => e.id === id) ?? null;
 
-  const { data, error } = await supabase
-    .from("events")
-    .select(SELECT)
-    .eq("id", id)
-    .eq("status", "approved")
-    .maybeSingle();
-  if (error) {
-    // id inválido (não-uuid) etc.
+  try {
+    const { data, error } = await supabase
+      .from("events")
+      .select(SELECT)
+      .eq("id", id)
+      .eq("status", "approved")
+      .maybeSingle();
+    if (error) throw error;
+    return data ? fromRow(data as unknown as EventRow) : null;
+  } catch (e) {
+    console.error("[NOW] erro ao carregar evento:", e);
     return null;
   }
-  return data ? fromRow(data as unknown as EventRow) : null;
 }
