@@ -69,3 +69,38 @@ export function mapsLink(event: SportEvent): string {
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event.venueName}, ${event.address}`)}`
   );
 }
+
+function tzOffsetMs(date: Date, timezone: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+      .formatToParts(date)
+      .map((p) => [p.type, p.value]),
+  );
+  const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return asUtc - Math.floor(date.getTime() / 1000) * 1000;
+}
+
+/** "2026-11-20T19:30" no horário local da cidade -> instante UTC. */
+export function localInputToUtc(local: string, timezone: string): Date {
+  const wall = new Date(`${local}:00Z`);
+  if (Number.isNaN(wall.getTime())) throw new Error("Data inválida");
+  let guess = new Date(wall.getTime() - tzOffsetMs(wall, timezone));
+  guess = new Date(wall.getTime() - tzOffsetMs(guess, timezone));
+  return guess;
+}
+
+/** Instante ISO -> valor para <input type="datetime-local"> no fuso da cidade. */
+export function utcToLocalInput(iso: string, timezone: string): string {
+  const d = new Date(iso);
+  const local = new Date(d.getTime() + tzOffsetMs(d, timezone));
+  return local.toISOString().slice(0, 16);
+}

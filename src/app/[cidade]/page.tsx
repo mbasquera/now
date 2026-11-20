@@ -81,7 +81,7 @@ export default async function CityPage({ params, searchParams }: Props) {
         <div className="mt-10 rounded-2xl border border-dashed border-line p-8 text-center">
           <p className="text-4xl">🏟️</p>
           <p className="mt-2 font-semibold">Nada por aqui com esses filtros.</p>
-          <p className="mt-1 text-sm text-muted">Tente outro esporte ou horário. Organiza eventos? Em breve você poderá cadastrá-los.</p>
+          <p className="mt-1 text-sm text-muted">Tente outro esporte ou horário. Organiza eventos? <Link href="/painel" className="text-accent underline">Cadastre o seu</Link>.</p>
         </div>
       ) : (
         SECTIONS.map(({ state, title }) => {

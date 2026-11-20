@@ -1,5 +1,5 @@
 import { getMockEvents } from "./mock-data";
-import { getSupabase } from "./supabase";
+import { getSupabase } from "./supabase/public";
 import type { SportEvent } from "./types";
 
 const LOOKAHEAD_DAYS = 7;

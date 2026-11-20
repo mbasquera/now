@@ -23,7 +23,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <span className="live-dot inline-block h-2.5 w-2.5 rounded-full bg-live" />
               NOW
             </Link>
-            <span className="text-xs text-muted">esporte ao vivo perto de você</span>
+            <Link href="/painel" className="rounded-full border border-line px-3 py-1 text-xs">
+              Sou organizador
+            </Link>
           </div>
         </header>
         <main className="mx-auto max-w-3xl px-4 pb-16">{children}</main>
