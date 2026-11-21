@@ -236,18 +236,41 @@ async function importSport(db: SupabaseClient, ids: Ids, sport: SportKey, apiKey
       is_free: false,
       price_cents: null,
       source_url: checkUrl(game, start),
+      home_name: game.home,
+      home_logo: game.homeLogo,
+      away_name: game.away,
+      away_logo: game.awayLogo,
+      league_logo: game.leagueLogo,
       status,
       rejection_reason,
     });
   }
 
-  const rows = [...rowsById.values()];
+  let rows = [...rowsById.values()];
   for (let i = 0; i < rows.length; i += 200) {
-    const { error } = await db.from("events").upsert(rows.slice(i, i + 200), { onConflict: "source,external_id" });
+    let { error } = await db.from("events").upsert(rows.slice(i, i + 200), { onConflict: "source,external_id" });
+    if (error && isMissingTeamColumns(error)) {
+      // Banco ainda sem a 0011_escudos.sql: salva sem os escudos em vez de perder o jogo.
+      summary.errors.push("Escudos não salvos: rode supabase/migrations/0011_escudos.sql no SQL Editor do Supabase.");
+      rows = rows.map(withoutTeamColumns);
+      ({ error } = await db.from("events").upsert(rows.slice(i, i + 200), { onConflict: "source,external_id" }));
+    }
     if (error) summary.errors.push(`Erro ao salvar: ${error.message}`);
     else summary.saved += Math.min(200, rows.length - i);
   }
   return summary;
+}
+
+const TEAM_COLUMNS = ["home_name", "home_logo", "away_name", "away_logo", "league_logo"];
+
+function isMissingTeamColumns(error: { message?: string; code?: string }) {
+  return /home_name|home_logo|away_name|away_logo|league_logo/.test(error.message ?? "");
+}
+
+function withoutTeamColumns(row: Record<string, unknown>) {
+  const copy = { ...row };
+  for (const c of TEAM_COLUMNS) delete copy[c];
+  return copy;
 }
 
 /** Busca os jogos dos próximos dias e grava/atualiza na tabela events. Registra em import_runs. */

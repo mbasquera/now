@@ -22,7 +22,10 @@ export type ExternalGame = {
   round: string | null;
   home: string;
   homeId: number | null;
+  homeLogo: string | null;
   away: string;
+  awayLogo: string | null;
+  leagueLogo: string | null;
   venueId: number | null;
   venueName: string | null;
   venueCity: string | null;
@@ -31,8 +34,8 @@ export type ExternalGame = {
 
 type FootballFixture = {
   fixture: { id: number; date: string; status: { short: string }; venue: { id: number | null; name: string | null; city: string | null } };
-  league: { id: number; name: string; country: string; round?: string };
-  teams: { home: { id: number; name: string }; away: { name: string } };
+  league: { id: number; name: string; country: string; round?: string; logo?: string | null };
+  teams: { home: { id: number; name: string; logo?: string | null }; away: { name: string; logo?: string | null } };
 };
 
 type Game = {
@@ -40,9 +43,9 @@ type Game = {
   date: string;
   status: { short: string };
   country: { name: string };
-  league: { id: number; name: string };
+  league: { id: number; name: string; logo?: string | null };
   week?: string | null;
-  teams: { home: { name: string }; away: { name: string } };
+  teams: { home: { name: string; logo?: string | null }; away: { name: string; logo?: string | null } };
 };
 
 type ApiResponse<T> = { errors: unknown; response: T[] };
@@ -85,7 +88,10 @@ export async function fetchBrazilGames(sport: SportKey, date: string, apiKey: st
         round: f.league.round ?? null,
         home: f.teams.home.name,
         homeId: f.teams.home.id ?? null,
+        homeLogo: f.teams.home.logo ?? null,
         away: f.teams.away.name,
+        awayLogo: f.teams.away.logo ?? null,
+        leagueLogo: f.league.logo ?? null,
         venueId: f.fixture.venue?.id ?? null,
         venueName: f.fixture.venue?.name ?? null,
         venueCity: f.fixture.venue?.city ?? null,
@@ -105,7 +111,10 @@ export async function fetchBrazilGames(sport: SportKey, date: string, apiKey: st
       round: g.week ?? null,
       home: g.teams.home.name,
       homeId: null,
+      homeLogo: g.teams.home.logo ?? null,
       away: g.teams.away.name,
+      awayLogo: g.teams.away.logo ?? null,
+      leagueLogo: g.league.logo ?? null,
       venueId: null,
       venueName: null,
       venueCity: null,
