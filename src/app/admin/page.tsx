@@ -25,6 +25,7 @@ type Row = {
   is_free: boolean;
   price_cents: number | null;
   image_url: string | null;
+  source_url: string | null;
   status: SportEvent["status"];
   updated_at: string;
   sport: { slug: string } | null;
@@ -43,7 +44,7 @@ type ImportRun = {
 const SPORT_LABEL: Record<string, string> = { futebol: "Futebol", basquete: "Basquete", volei: "Vôlei" };
 
 const SELECT =
-  "id, title, description, venue_name, address, starts_at, ends_at, is_free, price_cents, image_url, status, updated_at, sport:sports(slug), city:cities(slug), organizer:organizers(name, instagram, whatsapp)";
+  "id, title, description, venue_name, address, starts_at, ends_at, is_free, price_cents, image_url, source_url, status, updated_at, sport:sports(slug), city:cities(slug), organizer:organizers(name, instagram, whatsapp)";
 
 export default async function AdminPage() {
   if (!isSupabaseConfigured)
@@ -98,6 +99,16 @@ export default async function AdminPage() {
                 {e.venue_name} – {e.address}
               </p>
               {e.description && <p className="mt-2 whitespace-pre-line text-sm">{e.description}</p>}
+              <p className="mt-2 text-sm">
+                Fonte:{" "}
+                {e.source_url ? (
+                  <a href={e.source_url} target="_blank" rel="noopener noreferrer" className="text-accent underline">
+                    {e.source_url}
+                  </a>
+                ) : (
+                  <span className="text-live">sem link (confira antes de aprovar)</span>
+                )}
+              </p>
               <p className="mt-2 text-xs text-muted">
                 Organizador: {e.organizer?.name}
                 {e.organizer?.instagram && ` · @${e.organizer.instagram}`}

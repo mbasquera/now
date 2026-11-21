@@ -81,11 +81,21 @@ function sportTitle(g: ExternalGame) {
   return `${g.home} x ${g.away}`.slice(0, 120);
 }
 
+/**
+ * A API-Sports não tem página pública por jogo, então o link para conferir é uma busca no Google
+ * pelo confronto e a data (o Google mostra o card oficial do jogo com horário e estádio).
+ */
+function checkUrl(g: ExternalGame, start: Date) {
+  const day = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" }).format(start);
+  const q = `${g.home} x ${g.away} ${g.leagueName} ${day}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+}
+
 async function importSport(db: SupabaseClient, ids: Ids, sport: SportKey, apiKey: string): Promise<SportSummary> {
   const summary: SportSummary = { found: 0, inCapitals: 0, saved: 0, cancelled: 0, errors: [] };
   const sportId = ids.sports.get(sport);
   if (!sportId) {
-    summary.errors.push(`Esporte "${sport}" não existe na tabela sports (rode o seed.sql).`);
+    summary.errors.push(`Esporte "${sport}" não existe na tabela sports (rode o supabase/base.sql).`);
     return summary;
   }
 
@@ -144,6 +154,7 @@ async function importSport(db: SupabaseClient, ids: Ids, sport: SportKey, apiKey
       ends_at: end.toISOString(),
       is_free: false,
       price_cents: null,
+      source_url: checkUrl(game, start),
       status,
       rejection_reason,
     });

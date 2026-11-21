@@ -4,6 +4,9 @@ import type { SportEvent } from "./types";
 
 const LOOKAHEAD_DAYS = 7;
 
+// Eventos fictícios só aparecem fora do site de produção (no seu computador ou nas prévias da Vercel).
+const showMockData = process.env.VERCEL_ENV !== "production";
+
 type EventRow = {
   id: string;
   title: string;
@@ -18,6 +21,8 @@ type EventRow = {
   description: string | null;
   image_url: string | null;
   status: SportEvent["status"];
+  source: string;
+  source_url: string | null;
   sport: { slug: string } | null;
   city: { slug: string } | null;
   organizer: { name: string; instagram: string | null; whatsapp: string | null } | null;
@@ -25,7 +30,7 @@ type EventRow = {
 
 const SELECT = `
   id, title, venue_name, address, maps_url, starts_at, ends_at, is_free, price_cents,
-  ticket_url, description, image_url, status,
+  ticket_url, description, image_url, status, source, source_url,
   sport:sports(slug), city:cities!inner(slug),
   organizer:organizers(name, instagram, whatsapp)
 `;
@@ -50,6 +55,8 @@ function fromRow(r: EventRow): SportEvent {
     organizerInstagram: r.organizer?.instagram ?? null,
     organizerWhatsapp: r.organizer?.whatsapp ?? null,
     status: r.status,
+    source: r.source,
+    sourceUrl: r.source_url,
   };
 }
 
@@ -61,7 +68,7 @@ function explain(error: { message?: string; code?: string; details?: string }): 
   const code = error.code ?? "";
   let hint = "Não foi possível ler os eventos do banco.";
   if (code === "PGRST205" || code === "42P01" || /does not exist|could not find the table/i.test(msg))
-    hint = "As tabelas não existem no Supabase. Rode supabase/migrations/0001_init.sql e depois supabase/seed.sql no SQL Editor.";
+    hint = "As tabelas não existem no Supabase. Rode supabase/migrations/0001_init.sql e depois supabase/base.sql no SQL Editor.";
   else if (code === "42501" || /permission denied/i.test(msg))
     hint = "O banco bloqueou a leitura. Rode supabase/migrations/0002_grants.sql no SQL Editor do Supabase.";
   else if (code === "PGRST200" || /relationship/i.test(msg))
@@ -94,6 +101,7 @@ async function fetchCityEvents(citySlug: string, now: Date): Promise<SportEvent[
   const supabase = getSupabase();
 
   if (!supabase) {
+    if (!showMockData) return [];
     return getMockEvents(now)
       .filter((e) => e.citySlug === citySlug && new Date(e.endsAt) > now && new Date(e.startsAt) < limit)
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
@@ -114,7 +122,7 @@ async function fetchCityEvents(citySlug: string, now: Date): Promise<SportEvent[
 export async function getEvent(id: string): Promise<SportEvent | null> {
   const supabase = getSupabase();
   if (supabase && !/^[0-9a-f-]{36}$/i.test(id)) return null;
-  if (!supabase) return getMockEvents().find((e) => e.id === id) ?? null;
+  if (!supabase) return showMockData ? (getMockEvents().find((e) => e.id === id) ?? null) : null;
 
   try {
     const { data, error } = await supabase

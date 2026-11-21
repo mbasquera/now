@@ -18,6 +18,7 @@ export type EventFormValues = {
   is_free?: boolean;
   price?: string;
   ticket_url?: string | null;
+  source_url?: string | null;
   description?: string | null;
   image_url?: string | null;
 };
@@ -77,6 +78,20 @@ export function EventForm({ values = {}, error }: { values?: EventFormValues; er
       <p className="-mt-2 text-xs text-muted">Use o horário local da cidade do evento.</p>
 
       <PriceFields isFree={v.is_free ?? true} price={v.price ?? ""} ticketUrl={v.ticket_url ?? ""} />
+
+      <Field
+        label="Link de divulgação"
+        hint="Obrigatório. Post do Instagram, site ou página de ingressos onde o público pode conferir o evento."
+      >
+        <input
+          name="source_url"
+          type="url"
+          required
+          defaultValue={v.source_url ?? ""}
+          placeholder="https://instagram.com/p/..."
+          className={inputCls}
+        />
+      </Field>
 
       <Field label="Descrição">
         <textarea name="description" rows={4} defaultValue={v.description ?? ""} className={inputCls} />

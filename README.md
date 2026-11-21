@@ -11,15 +11,16 @@ npm install
 npm run dev
 ```
 
-Abra http://localhost:3000. **Sem configurar nada**, o site já funciona com eventos fictícios em São Paulo, Rio de Janeiro, Belo Horizonte e Manaus, com horários relativos ao momento atual (sempre há algo "ao vivo").
+Abra http://localhost:3000. **Sem configurar nada**, o site já funciona com eventos fictícios (só no seu computador e nas prévias; no site de produção eles nunca aparecem) em São Paulo, Rio de Janeiro, Belo Horizonte e Manaus, com horários relativos ao momento atual (sempre há algo "ao vivo").
 
 ## Conectando ao Supabase
 
 1. Crie um projeto em https://supabase.com.
 2. No **SQL Editor**, rode `supabase/migrations/0001_init.sql` (cria tabelas, regras de acesso e o bucket de fotos) e depois `supabase/migrations/0002_grants.sql` (dá permissão à API de ler e gravar as tabelas).
-3. Rode `supabase/seed.sql` (27 capitais, esportes e eventos de exemplo). Pode rodar de novo quando quiser: ele recria os eventos de exemplo com horários a partir de agora.
-4. Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (botão **Connect** do Supabase > App Frameworks > Next.js; o nome antigo `NEXT_PUBLIC_SUPABASE_ANON_KEY` também é aceito).
-5. Reinicie o `npm run dev`.
+3. Rode `supabase/base.sql` (27 capitais e esportes) e as migrations seguintes, na ordem (`0003_importacao.sql`, `0004_fonte.sql`).
+4. **Só para testes locais**, se quiser eventos fictícios: rode `supabase/seed.sql`. Nunca rode em produção. Para apagar os fictícios, rode de novo o `0004_fonte.sql`.
+5. Copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (botão **Connect** do Supabase > App Frameworks > Next.js; o nome antigo `NEXT_PUBLIC_SUPABASE_ANON_KEY` também é aceito).
+6. Reinicie o `npm run dev`.
 
 Na Vercel, cadastre as mesmas duas variáveis em Settings > Environment Variables.
 
@@ -66,3 +67,10 @@ Além dos cadastros dos organizadores, o site busca sozinho os jogos dos próxim
 - O fim do jogo é estimado (futebol 2h, basquete 2h15, vôlei 2h30), porque a API só informa o início.
 
 **Limite do plano grátis:** se o `/admin` mostrar um erro dizendo que o plano grátis não tem acesso à temporada, é preciso assinar o plano pago do esporte em questão na API-Sports.
+
+## Fonte de cada evento
+
+Todo evento mostra de onde veio a informação ("Fonte" no card e na página do evento):
+
+- **Cadastrado por organizador:** o link de divulgação (Instagram, site ou página de ingressos) é obrigatório no formulário e aparece no `/admin` para você conferir antes de aprovar.
+- **Importado:** "API-Sports (dados da competição)", com um link "Conferir este jogo" que abre a busca do confronto no Google, onde aparece o card oficial do jogo.

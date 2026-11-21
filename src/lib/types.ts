@@ -32,6 +32,8 @@ export type SportEvent = {
   organizerInstagram: string | null;
   organizerWhatsapp: string | null;
   status: EventStatus;
+  source?: string; // "manual" (organizador) ou "api-sports" (importado)
+  sourceUrl?: string | null; // onde conferir a informação
 };
 
 /** Status calculado na hora a partir do início/fim. */

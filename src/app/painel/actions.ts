@@ -67,6 +67,10 @@ export async function saveEvent(form: FormData) {
   const priceCents = isFree ? null : Math.round(parseFloat(price) * 100);
   if (!isFree && (!priceCents || priceCents < 0)) fail("Informe o preço ou marque como gratuito.");
 
+  const sourceUrl = str(form, "source_url");
+  if (!/^https?:\/\/\S+\.\S+/i.test(sourceUrl))
+    fail("Informe o link de divulgação (Instagram, site ou página de ingressos), começando com https://.");
+
   const [{ data: cityRow }, { data: sportRow }] = await Promise.all([
     supabase.from("cities").select("id").eq("slug", city!.slug).single(),
     supabase.from("sports").select("id").eq("slug", str(form, "sport")).single(),
@@ -100,6 +104,7 @@ export async function saveEvent(form: FormData) {
     price_cents: priceCents,
     ticket_url: isFree ? null : opt(form, "ticket_url"),
     image_url: imageUrl,
+    source_url: sourceUrl,
     // Toda edição volta para a fila de aprovação (admins aprovam na etapa 3).
     status: "pending" as const,
     rejection_reason: null,

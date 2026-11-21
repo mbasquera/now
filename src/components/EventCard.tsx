@@ -3,6 +3,7 @@ import type { LiveState, SportEvent } from "@/lib/types";
 import { getSport } from "@/lib/sports";
 import { formatDayLabel, formatPrice, formatTime, minutesUntil } from "@/lib/time";
 import { LiveBadge } from "./LiveBadge";
+import { sourceLabel } from "@/lib/source";
 
 export function EventCard({
   event,
@@ -45,6 +46,7 @@ export function EventCard({
           <span className="text-muted"> · </span>
           <span className={event.isFree ? "text-accent" : ""}>{formatPrice(event)}</span>
         </p>
+        {sourceLabel(event) && <p className="mt-0.5 truncate text-xs text-muted">Fonte: {sourceLabel(event)}</p>}
       </div>
     </Link>
   );
