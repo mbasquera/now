@@ -66,7 +66,7 @@ Além dos cadastros dos organizadores, o site busca sozinho os jogos dos próxim
 - Cada campeonato vira um "organizador" (ex.: *Paulista - A1*), sem login.
 - O fim do jogo é estimado (futebol 2h, basquete 2h15, vôlei 2h30), porque a API só informa o início.
 
-**Limite do plano grátis:** se o `/admin` mostrar um erro dizendo que o plano grátis não tem acesso à temporada, é preciso assinar o plano pago do esporte em questão na API-Sports.
+**Limite do plano grátis:** a API-Sports grátis só libera jogos de ontem até depois de amanhã. Os dias além disso são pulados sem erro (o `/admin` mostra "dia(s) fora do plano grátis"). Como a importação roda todo dia, a janela vai andando junto. Para ver 7 dias à frente, assine o plano pago do esporte. A Vercel grátis só permite rodar o cron uma vez por dia.
 
 ## Fonte de cada evento
 

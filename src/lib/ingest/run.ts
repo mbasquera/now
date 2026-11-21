@@ -3,6 +3,7 @@ import { getCity } from "../cities";
 import { checkSecretKey, getSupabaseAdmin } from "../supabase/admin";
 import {
   ApiSportsError,
+  PlanLimitError,
   CANCELLED,
   DURATION_MIN,
   fetchBrazilGames,
@@ -22,6 +23,7 @@ export type SportSummary = {
   inCapitals: number; // jogos numa capital (os outros são ignorados)
   saved: number;
   cancelled: number;
+  skippedDays?: number; // dias fora do alcance do plano (não é erro)
   errors: string[];
 };
 export type ImportSummary = { ok: boolean; message?: string; sports: Partial<Record<SportKey, SportSummary>> };
@@ -102,6 +104,10 @@ async function importSport(db: SupabaseClient, ids: Ids, sport: SportKey, apiKey
   const results = await Promise.allSettled(nextDates(DAYS_AHEAD).map((d) => fetchBrazilGames(sport, d, apiKey)));
   const games: { game: ExternalGame; citySlug: string }[] = [];
   for (const r of results) {
+    if (r.status === "rejected" && r.reason instanceof PlanLimitError) {
+      summary.skippedDays = (summary.skippedDays ?? 0) + 1;
+      continue;
+    }
     if (r.status === "rejected") {
       summary.errors.push(r.reason instanceof ApiSportsError ? r.reason.message : String(r.reason));
       continue;
