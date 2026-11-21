@@ -11,6 +11,7 @@ import {
   type SportKey,
 } from "./apisports";
 import { cityFromTeam, cityFromVenueCity } from "./match-city";
+import { UNKNOWN_VENUE } from "../source";
 
 export const SOURCE = "api-sports";
 const SPORTS: SportKey[] = ["futebol", "basquete", "volei"];
@@ -114,7 +115,8 @@ async function importSport(db: SupabaseClient, ids: Ids, sport: SportKey, apiKey
     }
     for (const game of r.value) {
       summary.found++;
-      const citySlug = cityFromVenueCity(game.venueCity) ?? cityFromTeam(game.home);
+      // Futebol: só pela cidade do estádio. Basquete/vôlei (sem estádio na API): pelo nome exato do mandante.
+      const citySlug = sport === "futebol" ? cityFromVenueCity(game.venueCity) : cityFromTeam(game.home);
       if (citySlug && ids.cities.has(citySlug)) games.push({ game, citySlug });
     }
   }
@@ -145,7 +147,7 @@ async function importSport(db: SupabaseClient, ids: Ids, sport: SportKey, apiKey
     const city = getCity(citySlug)!;
     const start = new Date(game.startsAt);
     const end = new Date(start.getTime() + DURATION_MIN[sport] * 60_000);
-    const venue = game.venueName || `Mando de ${game.home}`;
+    const venue = game.venueName || UNKNOWN_VENUE;
     rowsById.set(game.externalId, {
       source: SOURCE,
       external_id: game.externalId,

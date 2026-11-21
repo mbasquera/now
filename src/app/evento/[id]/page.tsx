@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { getCity } from "@/lib/cities";
 import { getEvent } from "@/lib/data";
 import { getSport } from "@/lib/sports";
-import { sourceDomain } from "@/lib/source";
+import { UNKNOWN_VENUE, sourceDomain } from "@/lib/source";
 import { formatDayLabel, formatPrice, formatTime, getLiveState, mapsLink, minutesUntil } from "@/lib/time";
 import { LiveBadge } from "@/components/LiveBadge";
 
@@ -70,14 +70,18 @@ export default async function EventPage({ params }: Props) {
       </dl>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <a
-          href={mapsLink(event)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-xl bg-accent px-4 py-3 text-center font-bold text-black"
-        >
-          Como chegar
-        </a>
+        {event.venueName === UNKNOWN_VENUE ? (
+          <span className="rounded-xl border border-line px-4 py-3 text-center text-muted">Local a confirmar</span>
+        ) : (
+          <a
+            href={mapsLink(event)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl bg-accent px-4 py-3 text-center font-bold text-black"
+          >
+            Como chegar
+          </a>
+        )}
         {event.ticketUrl ? (
           <a
             href={event.ticketUrl}
