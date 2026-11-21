@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { getCity } from "@/lib/cities";
 import { getEvent } from "@/lib/data";
 import { getSport } from "@/lib/sports";
+import { sourceDomain } from "@/lib/source";
 import { formatDayLabel, formatPrice, formatTime, getLiveState, mapsLink, minutesUntil } from "@/lib/time";
 import { LiveBadge } from "@/components/LiveBadge";
 
@@ -99,6 +100,29 @@ export default async function EventPage({ params }: Props) {
           <p className="mt-2 whitespace-pre-line leading-relaxed">{event.description}</p>
         </section>
       )}
+
+      <section className="mt-6 rounded-2xl border border-line bg-surface p-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Fonte</h2>
+        {event.source === "api-sports" ? (
+          <p className="mt-1 text-sm">
+            Importado automaticamente da API-Sports, que reúne os dados oficiais das competições ({event.organizerName}).
+          </p>
+        ) : (
+          <p className="mt-1 text-sm">Divulgação do próprio organizador.</p>
+        )}
+        {event.sourceUrl ? (
+          <a
+            href={event.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-block text-sm text-accent underline"
+          >
+            {event.source === "api-sports" ? "Conferir este jogo" : `Ver a divulgação (${sourceDomain(event.sourceUrl) ?? "link"})`}
+          </a>
+        ) : (
+          <p className="mt-2 text-sm text-muted">Sem link de fonte.</p>
+        )}
+      </section>
 
       <section className="mt-6 rounded-2xl border border-line bg-surface p-4">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Organizador</h2>

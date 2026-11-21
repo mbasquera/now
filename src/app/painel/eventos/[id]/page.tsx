@@ -49,6 +49,7 @@ export default async function EditEventPage({
           is_free: e.is_free,
           price: e.price_cents ? (e.price_cents / 100).toFixed(2).replace(".", ",") : "",
           ticket_url: e.ticket_url,
+          source_url: e.source_url,
           description: e.description,
           image_url: e.image_url,
         }}
