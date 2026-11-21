@@ -45,6 +45,8 @@ type Game = {
 type ApiResponse<T> = { errors: unknown; response: T[] };
 
 export class ApiSportsError extends Error {}
+/** A data está fora do que o plano permite (o grátis só libera de ontem até depois de amanhã). */
+export class PlanLimitError extends ApiSportsError {}
 
 function errorText(errors: unknown): string | null {
   if (!errors) return null;
@@ -64,6 +66,7 @@ export async function fetchBrazilGames(sport: SportKey, date: string, apiKey: st
   if (!res.ok) throw new ApiSportsError(`${sport} ${date}: HTTP ${res.status}`);
   const body = (await res.json()) as ApiResponse<unknown>;
   const err = errorText(body.errors);
+  if (err && /do not have access to this (date|season)/i.test(err)) throw new PlanLimitError(`${sport} ${date}: ${err}`);
   if (err) throw new ApiSportsError(`${sport} ${date}: ${err}`);
 
   if (sport === "futebol") {

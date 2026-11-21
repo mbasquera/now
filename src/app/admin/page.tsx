@@ -157,8 +157,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-muted">Importação automática</h2>
       <div className="mt-2 rounded-2xl border border-line bg-surface p-4 text-sm">
         <p className="text-muted">
-          Todo dia às 6h (Brasília) o site busca na API-Sports os jogos de futebol, basquete e vôlei dos próximos 7 dias
-          nas capitais. Eles entram já aprovados.
+          Todo dia às 6h (Brasília) o site busca na API-Sports os jogos de futebol, basquete e vôlei nas capitais. No
+          plano grátis a API só libera até depois de amanhã; num plano pago, busca os próximos 7 dias. Os jogos entram já
+          aprovados.
         </p>
         <form action={importNow} className="mt-3">
           <ImportButton />
@@ -190,6 +191,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   <p className="text-muted">
                     {SPORT_LABEL[sport] ?? sport}: {s.found} jogo(s) no Brasil, {s.inCapitals} em capitais, {s.saved} salvo(s)
                     {s.cancelled > 0 && `, ${s.cancelled} adiado(s)/cancelado(s)`}
+                    {!!s.skippedDays && ` · ${s.skippedDays} dia(s) fora do plano grátis`}
                   </p>
                   {s.errors.slice(0, 3).map((err, i) => (
                     <p key={i} className="text-xs text-live">
