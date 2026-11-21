@@ -4,6 +4,7 @@ import { UNKNOWN_VENUE } from "../source";
 import { checkSecretKey, getSupabaseAdmin } from "../supabase/admin";
 import { cityFromVenueCity, normalize } from "./match-city";
 import { parserFor } from "./parsers";
+import { TBC_DURATION_MS, zonedMidnight } from "../time";
 
 /**
  * Leitor "educado" de sites públicos de eventos.
@@ -215,6 +216,11 @@ const SPORT_WORDS: [RegExp, string][] = [
   [/\bfutsal\b/, "futsal"],
   [/\b(basquete|basketball|nbb|3x3)\b/, "basquete"],
   [/\b(volei|volleyball|superliga)\b/, "volei"],
+  [/\b(handebol|handball)\b/, "handebol"],
+  [/\brugby\b/, "rugby"],
+  [/\b(triathlon|triatlo|ironman|duathlon|duatlo|aquathlon|aquatlo)\b/, "triatlo"],
+  [/\b(ciclismo|cycling|mtb|mountain bike|gran fondo|pedal|pedalada)\b/, "ciclismo"],
+  [/\b(corrida|maratona|meia maratona|run|running|caminhada|trail|cross country)\b/, "corrida"],
   [/\b(futebol|football|soccer|campeonato brasileiro|copa do brasil)\b/, "futebol"],
 ];
 
@@ -293,15 +299,18 @@ async function crawlSource(
   let organizerId: string | null = null;
 
   for (const ev of events) {
-    const start = parseDate(ev.startDate);
-    if (!start || start.getTime() > limit) continue;
-    let end = ev.endDate ? parseDate(ev.endDate) : null;
-    if (!end || end <= start) end = new Date(start.getTime() + 3 * 3_600_000);
-    if (end.getTime() < now) continue;
     const citySlug = cityFromVenueCity(ev.locality);
     const sportSlug = ev.sport ?? detectSport(`${ev.name} ${ev.description ?? ""}`) ?? src.sport_slug;
     if (!citySlug || !sportSlug || !ids.cities.has(citySlug) || !ids.sports.has(sportSlug)) continue;
     const city = getCity(citySlug)!;
+    // Só a data, sem horário: grava o dia inteiro (00:00–23:59 no fuso da cidade) e o site mostra "horário a confirmar".
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(ev.startDate.trim());
+    const start = dateOnly ? new Date(zonedMidnight(ev.startDate.trim(), city.timezone)) : parseDate(ev.startDate);
+    if (!start || start.getTime() > limit) continue;
+    let end = !dateOnly && ev.endDate ? parseDate(ev.endDate) : null;
+    if (dateOnly) end = new Date(start.getTime() + TBC_DURATION_MS);
+    else if (!end || end <= start) end = new Date(start.getTime() + 3 * 3_600_000);
+    if (end.getTime() < now) continue;
     organizerId ??= await organizerFor(db, host);
     rows.push({
       source: SITE_SOURCE,

@@ -3,7 +3,7 @@ import type { LiveState, SportEvent } from "@/lib/types";
 import { getSport } from "@/lib/sports";
 import { getMatchup } from "@/lib/matchup";
 import { UNKNOWN_VENUE, isImported } from "@/lib/source";
-import { formatPrice, formatTime, minutesUntil } from "@/lib/time";
+import { formatPrice, formatStart, formatTime, minutesUntil } from "@/lib/time";
 import { Crest } from "./Crest";
 import { SportIcon } from "./SportIcon";
 
@@ -21,7 +21,7 @@ function TimeCell({ event, state, now, timezone }: { event: SportEvent; state: L
   const min = minutesUntil(event.startsAt, now);
   return (
     <>
-      <span className="font-display text-lg leading-none font-bold tabular-nums">{formatTime(event.startsAt, timezone)}</span>
+      <span className="font-display text-lg leading-none font-bold tabular-nums">{formatStart(event, timezone)}</span>
       {state === "soon" && <span className="mt-1 text-[11px] font-semibold text-accent">em {min < 60 ? `${min} min` : `${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")}`}</span>}
     </>
   );

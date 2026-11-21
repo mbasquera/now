@@ -84,10 +84,13 @@ Em `/admin > Sites lidos pelo robô` você cadastra páginas públicas de evento
 - lê eventos publicados em **schema.org JSON-LD** (`Event`/`SportsEvent`), o padrão que os sites usam para o Google;
 - tem leitores próprios (`src/lib/ingest/parsers.ts`) para sites oficiais sem schema.org: tabela da **LNF** (futsal) e agenda da **Superliga** na CBV (vôlei). Só entram jogos em que a página mostra data, hora, ginásio e cidade;
 - não duplica jogo que já veio da API (mesmo esporte, cidade e horário, ±45 min);
+- também lê calendários de corrida de rua das prefeituras de **São Paulo** e **Porto Alegre** e as listas de corrida e ciclismo do **intervals.icu** (só provas em capitais). Quando a fonte não informa o horário, o evento é gravado como o dia inteiro (00:00–23:59) e o site mostra **"horário a confirmar"**;
 - só aceita eventos com data, cidade de capital (`addressLocality`) e esporte reconhecível (pelo nome ou pelo esporte padrão do site);
 - grava os eventos já **aprovados**, com o link da página como fonte (a moderação fica só para divulgações de organizadores; um evento que o admin recusou continua recusado).
 
-Rode `supabase/migrations/0007_estadios.sql`, `0008_sites.sql`, `0009_sites_oficiais.sql` (cadastra os sites oficiais) e `0010_aprovar_importados.sql` (aprova os eventos de sites que estavam pendentes) antes de usar.
+Rode `supabase/migrations/0007_estadios.sql`, `0008_sites.sql`, `0009_sites_oficiais.sql` (cadastra os sites oficiais) e `0010_aprovar_importados.sql` (aprova os eventos de sites que estavam pendentes) antes de usar. A `0012_mais_esportes.sql` cria corrida, ciclismo, triatlo, handebol e rugby e cadastra as fontes desses esportes.
+
+A importação da API-Sports também busca **handebol** e **rugby** (mesma chave, cota própria de 100 consultas/dia por esporte).
 
 Sites pesquisados em 21/11/2026 e não cadastrados: IBJJF (não tem lista pública de eventos que o robô alcance), Smoothcomp (lista só aparece com JavaScript), MartialMatch (sem eventos no Brasil na lista), CBF (as páginas de Série A/B mostram só a classificação, sem a agenda), NBB/LNB (a tabela só tinha jogos já encerrados; o basquete já vem pela API) e Sympla (o robots.txt não respondeu).
 

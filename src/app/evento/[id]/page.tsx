@@ -6,7 +6,7 @@ import { getEvent } from "@/lib/data";
 import { SPORT_PHOTOS, getSport } from "@/lib/sports";
 import { getMatchup } from "@/lib/matchup";
 import { UNKNOWN_VENUE, isImported, sourceDomain } from "@/lib/source";
-import { formatDayLabel, formatPrice, formatTime, getLiveState, mapsLink, minutesUntil } from "@/lib/time";
+import { formatDayLabel, formatPrice, formatStart, formatTime, getLiveState, isTimeTbc, mapsLink, minutesUntil } from "@/lib/time";
 import { LiveBadge } from "@/components/LiveBadge";
 import { Crest } from "@/components/Crest";
 import { SportCover } from "@/components/SportCover";
@@ -117,7 +117,7 @@ export default async function EventPage({ params }: Props) {
             {state === "live" ? (
               <span className="font-display text-lg font-bold text-live">em jogo</span>
             ) : (
-              <span className="font-display text-3xl font-bold tabular-nums">{formatTime(event.startsAt, tz)}</span>
+              <span className="font-display text-3xl font-bold tabular-nums">{formatStart(event, tz)}</span>
             )}
             <p className="text-xs text-muted">{formatDayLabel(event.startsAt, now, tz)}</p>
           </div>
@@ -134,7 +134,9 @@ export default async function EventPage({ params }: Props) {
           <InfoRow icon="when" label="Quando">
             <dd className="font-semibold">
               {formatDayLabel(event.startsAt, now, tz)},{" "}
-              {imported
+              {isTimeTbc(event, tz)
+                ? "horário a confirmar"
+                : imported
                 ? `início às ${formatTime(event.startsAt, tz)}`
                 : `${formatTime(event.startsAt, tz)} às ${formatTime(event.endsAt, tz)}`}
             </dd>

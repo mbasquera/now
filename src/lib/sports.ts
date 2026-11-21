@@ -7,6 +7,11 @@ export const SPORTS: Sport[] = [
   { slug: "volei", name: "Vôlei", emoji: "🏐", color: "#facc15" },
   { slug: "jiu-jitsu", name: "Jiu-jitsu", emoji: "🥋", color: "#a78bfa" },
   { slug: "mma", name: "MMA", emoji: "🥊", color: "#f43f5e" },
+  { slug: "handebol", name: "Handebol", emoji: "🤾", color: "#2dd4bf" },
+  { slug: "rugby", name: "Rugby", emoji: "🏉", color: "#a3e635" },
+  { slug: "corrida", name: "Corrida", emoji: "🏃", color: "#f472b6" },
+  { slug: "ciclismo", name: "Ciclismo", emoji: "🚴", color: "#60a5fa" },
+  { slug: "triatlo", name: "Triatlo", emoji: "🏊", color: "#22d3ee" },
 ];
 
 export const SPORTS_BY_SLUG = new Map(SPORTS.map((s) => [s.slug, s]));
@@ -16,7 +21,7 @@ export function getSport(slug: string): Sport {
 }
 
 /** Esportes disputados entre dois times (o card mostra um "placar" com os escudos). */
-export const TEAM_SPORTS = new Set(["futebol", "futsal", "basquete", "volei"]);
+export const TEAM_SPORTS = new Set(["futebol", "futsal", "basquete", "volei", "handebol", "rugby"]);
 
 export type Photo = { id: string; author: string; handle: string; page: string };
 

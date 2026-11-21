@@ -3,7 +3,7 @@ import type { LiveState, SportEvent } from "@/lib/types";
 import { getSport } from "@/lib/sports";
 import { getMatchup } from "@/lib/matchup";
 import { UNKNOWN_VENUE } from "@/lib/source";
-import { formatTime, minutesUntil } from "@/lib/time";
+import { formatTime, isTimeTbc, minutesUntil } from "@/lib/time";
 import { Crest } from "./Crest";
 import { LiveBadge } from "./LiveBadge";
 import { SportCover } from "./SportCover";
@@ -54,7 +54,11 @@ export function LiveCard({
           <h3 className="line-clamp-2 font-display text-2xl leading-tight font-bold">{event.title}</h3>
         )}
         <p className="mt-2 truncate text-xs text-white/75">
-          {state === "live" ? `Começou às ${formatTime(event.startsAt, timezone)}` : `Às ${formatTime(event.startsAt, timezone)}`}
+          {state === "live"
+            ? `Começou às ${formatTime(event.startsAt, timezone)}`
+            : isTimeTbc(event, timezone)
+              ? "Horário a confirmar"
+              : `Às ${formatTime(event.startsAt, timezone)}`}
           {" em "}
           {event.venueName === UNKNOWN_VENUE ? "local a confirmar" : event.venueName}
         </p>

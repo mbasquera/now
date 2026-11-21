@@ -13,11 +13,44 @@ export function dayKey(date: Date, timezone: string): string {
   }).format(date);
 }
 
+/** Duração usada para eventos sem horário informado: o dia inteiro (00:00 às 23:59). */
+export const TBC_DURATION_MS = 86_340_000;
+
+/** Meia-noite (00:00) de uma data AAAA-MM-DD no fuso informado, em ISO/UTC. */
+export function zonedMidnight(date: string, timezone: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  let t = Date.UTC(y, m - 1, d, 3); // palpite: 00:00 em UTC-3
+  for (let i = 0; i < 2; i++) {
+    const hm = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(t));
+    const [h, min] = hm.split(":").map(Number);
+    const localDay = dayKey(new Date(t), timezone);
+    const dayShift = localDay < date ? 24 * 60 : localDay > date ? -24 * 60 : 0;
+    t -= (h * 60 + min - dayShift) * 60_000;
+  }
+  return new Date(t).toISOString();
+}
+
+/** A fonte não informou o horário (o evento foi gravado das 00:00 às 23:59 do dia). */
+export function isTimeTbc(event: Pick<SportEvent, "startsAt" | "endsAt">, timezone: string): boolean {
+  const start = new Date(event.startsAt);
+  return (
+    new Date(event.endsAt).getTime() - start.getTime() === TBC_DURATION_MS &&
+    formatTime(event.startsAt, timezone) === "00:00"
+  );
+}
+
+/** Horário de início para exibir ("19:30" ou "a confirmar"). */
+export function formatStart(event: Pick<SportEvent, "startsAt" | "endsAt">, timezone: string): string {
+  return isTimeTbc(event, timezone) ? "a confirmar" : formatTime(event.startsAt, timezone);
+}
+
 export function getLiveState(event: SportEvent, now: Date, timezone: string): LiveState {
   const start = new Date(event.startsAt).getTime();
   const end = new Date(event.endsAt).getTime();
   const t = now.getTime();
   if (end <= t) return "ended";
+  if (isTimeTbc(event, timezone))
+    return dayKey(new Date(start), timezone) === dayKey(now, timezone) ? "later_today" : "upcoming";
   if (start <= t) return "live";
   if (start - t <= SOON_WINDOW_MIN * 60_000) return "soon";
   if (dayKey(new Date(start), timezone) === dayKey(now, timezone)) return "later_today";

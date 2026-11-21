@@ -17,7 +17,7 @@ import { cityFromTeam, cityFromVenueCity } from "./match-city";
 import { UNKNOWN_VENUE } from "../source";
 
 export const SOURCE = "api-sports";
-const SPORTS: SportKey[] = ["futebol", "basquete", "volei"];
+const SPORTS: SportKey[] = ["futebol", "basquete", "volei", "handebol", "rugby"];
 const DAYS_AHEAD = 7; // hoje + 6 dias = 7 consultas por esporte por dia
 // Motivo usado quando a importação recusa sozinha um jogo adiado/cancelado (e pode reaprovar se ele voltar).
 const AUTO_REASON = "Adiado ou cancelado segundo a fonte (importação automática).";
