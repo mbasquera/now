@@ -74,3 +74,19 @@ Todo evento mostra de onde veio a informação ("Fonte" no card e na página do 
 
 - **Cadastrado por organizador:** o link de divulgação (Instagram, site ou página de ingressos) é obrigatório no formulário e aparece no `/admin` para você conferir antes de aprovar.
 - **Importado:** "API-Sports (dados da competição)", com um link "Conferir este jogo" que abre a busca do confronto no Google, onde aparece o card oficial do jogo.
+
+## Robô de sites (eventos além da API)
+
+Em `/admin > Sites lidos pelo robô` você cadastra páginas públicas de eventos (calendários de federações, listas de campeonatos, páginas de ingressos). Todo dia às 6h30 o robô (`src/lib/ingest/crawler.ts`):
+
+- respeita o `robots.txt` de cada site (se proibir, pula) e o `Crawl-delay`, esperando no mínimo 5 s entre páginas do mesmo site e lendo no máximo 4 páginas por site por execução;
+- se identifica como `NOWBot/1.0` e não relê a mesma página de evento por 24 h;
+- só lê eventos publicados em **schema.org JSON-LD** (`Event`/`SportsEvent`), o padrão que os sites usam para o Google;
+- só aceita eventos com data, cidade de capital (`addressLocality`) e esporte reconhecível (pelo nome ou pelo esporte padrão do site);
+- grava tudo como **pendente**, com o link da página como fonte, para o admin aprovar.
+
+Rode `supabase/migrations/0007_estadios.sql` e `0008_sites.sql` antes de usar.
+
+## Local dos jogos de futebol
+
+Quando a API-Sports manda um jogo sem cidade do estádio, a importação consulta o estádio (`/venues`) ou o estádio cadastrado do time mandante (`/teams`), com cache de 30 dias (`venue_cache`) e no máximo 25 consultas por execução. Quando o local vem do mandante, a descrição do evento avisa.

@@ -8,7 +8,9 @@ import { requireUser } from "@/lib/supabase/server";
 import { SupabaseMissing } from "@/components/SupabaseMissing";
 import type { SportEvent } from "@/lib/types";
 import type { ImportSummary } from "@/lib/ingest/run";
-import { importNow, moderate } from "./actions";
+import type { CrawlSummary } from "@/lib/ingest/crawler";
+import { SPORTS } from "@/lib/sports";
+import { addSite, crawlNow, importNow, moderate, removeSite } from "./actions";
 import { ImportButton } from "./ImportButton";
 
 export const dynamic = "force-dynamic";
@@ -39,15 +41,17 @@ type ImportRun = {
   started_at: string;
   trigger: string;
   ok: boolean | null;
-  summary: ImportSummary | null;
+  summary: (ImportSummary & Partial<CrawlSummary>) | null;
 };
+
+type Site = { id: number; url: string; link_pattern: string | null; sport_slug: string | null; last_run_at: string | null; last_result: string | null };
 
 const SPORT_LABEL: Record<string, string> = { futebol: "Futebol", basquete: "Basquete", volei: "Vôlei" };
 
 const SELECT =
   "id, title, description, venue_name, address, starts_at, ends_at, is_free, price_cents, image_url, source_url, status, updated_at, sport:sports(slug), city:cities(slug), organizer:organizers(name, instagram, whatsapp)";
 
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ importacao?: string }> }) {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ importacao?: string; sites?: string }> }) {
   if (!isSupabaseConfigured)
     return (
       <div className="py-8">
@@ -60,13 +64,15 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   if (organizer?.role !== "admin") redirect("/painel");
 
   const now = new Date();
-  const { importacao } = await searchParams;
-  const [{ data: pending }, { data: recent }, { data: runsData, error: runsError }] = await Promise.all([
+  const { importacao, sites: sitesMsg } = await searchParams;
+  const [{ data: pending }, { data: recent }, { data: runsData, error: runsError }, { data: sitesData, error: sitesError }] = await Promise.all([
     supabase.from("events").select(SELECT).eq("status", "pending").gt("ends_at", now.toISOString()).order("starts_at"),
     supabase.from("events").select(SELECT).neq("status", "pending").order("updated_at", { ascending: false }).limit(10),
-    supabase.from("import_runs").select("id, started_at, trigger, ok, summary").order("started_at", { ascending: false }).limit(5),
+    supabase.from("import_runs").select("id, started_at, trigger, ok, summary").order("started_at", { ascending: false }).limit(6),
+    supabase.from("crawl_sources").select("id, url, link_pattern, sport_slug, last_run_at, last_result").order("created_at"),
   ]);
   const runs = (runsData ?? []) as ImportRun[];
+  const siteList = (sitesData ?? []) as Site[];
   const queue = (pending ?? []) as unknown as Row[];
   const done = (recent ?? []) as unknown as Row[];
 
@@ -183,7 +189,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   {r.ok ? "OK" : r.ok === false ? "Com erros" : "Rodando…"}
                 </span>{" "}
                 · {formatDayLabel(r.started_at, now, "America/Sao_Paulo")}, {formatTime(r.started_at, "America/Sao_Paulo")} ·{" "}
-                {r.trigger === "cron" ? "automática" : "manual"}
+                {r.trigger.startsWith("sites") ? "sites · " : "API · "}
+                {r.trigger.endsWith("cron") ? "automática" : "manual"}
               </p>
               {r.summary?.message && <p className="text-live">{r.summary.message}</p>}
               {Object.entries(r.summary?.sports ?? {}).map(([sport, s]) => (
@@ -201,9 +208,73 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   ))}
                 </div>
               ))}
+              {(r.summary?.sites ?? []).map((st) => (
+                <p key={st.url} className="truncate text-muted">
+                  {st.url}: {st.note ?? `${st.pages} página(s), ${st.found} evento(s), ${st.saved} salvo(s) como pendentes`}
+                </p>
+              ))}
             </li>
           ))}
         </ul>
+      </div>
+
+      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-muted">Sites lidos pelo robô</h2>
+      <div className="mt-2 rounded-2xl border border-line bg-surface p-4 text-sm">
+        <p className="text-muted">
+          Todo dia às 6h30 o robô lê as páginas abaixo, devagar e só se o robots.txt do site permitir. Ele só entende eventos
+          publicados no padrão schema.org (o mesmo que o Google usa). Os eventos encontrados entram como <b>pendentes</b> na
+          fila acima, com o link da página como fonte, para você conferir.
+        </p>
+        <form action={crawlNow} className="mt-3">
+          <ImportButton label="Ler sites agora" />
+        </form>
+        {sitesMsg === "sites-ok" && (
+          <p className="mt-3 rounded-xl bg-accent/15 p-3 text-accent">Leitura concluída. Veja o resultado no histórico acima.</p>
+        )}
+        {sitesMsg === "site-adicionado" && <p className="mt-3 rounded-xl bg-accent/15 p-3 text-accent">Site adicionado.</p>}
+        {sitesMsg && !["sites-ok", "site-adicionado"].includes(sitesMsg) && (
+          <p className="mt-3 rounded-xl bg-live/15 p-3 text-live">{sitesMsg}</p>
+        )}
+        {sitesError && (
+          <p className="mt-3 rounded-xl bg-live/15 p-3 text-live">
+            Rode supabase/migrations/0007_estadios.sql e 0008_sites.sql no SQL Editor do Supabase ({sitesError.message}).
+          </p>
+        )}
+        <ul className="mt-3 space-y-2">
+          {siteList.map((st) => (
+            <li key={st.id} className="flex items-start justify-between gap-2 border-t border-line pt-2">
+              <div className="min-w-0">
+                <a href={st.url} target="_blank" rel="noopener noreferrer" className="block truncate text-accent underline">
+                  {st.url}
+                </a>
+                <p className="text-xs text-muted">
+                  {st.link_pattern && `segue links com "${st.link_pattern}" · `}
+                  {st.sport_slug && `esporte padrão: ${st.sport_slug} · `}
+                  {st.last_result ?? "ainda não lido"}
+                </p>
+              </div>
+              <form action={removeSite}>
+                <input type="hidden" name="id" value={st.id} />
+                <button className="text-xs text-live underline">Remover</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+        <form action={addSite} className="mt-4 grid gap-2">
+          <input name="url" type="url" required placeholder="https://site.com.br/eventos/esportes" className="rounded-xl border border-line bg-bg px-3 py-2" />
+          <div className="grid grid-cols-2 gap-2">
+            <input name="link_pattern" placeholder='Seguir links com (ex.: "/evento/")' className="min-w-0 rounded-xl border border-line bg-bg px-3 py-2" />
+            <select name="sport_slug" defaultValue="" className="rounded-xl border border-line bg-bg px-3 py-2">
+              <option value="">Esporte: detectar</option>
+              {SPORTS.map((sp) => (
+                <option key={sp.slug} value={sp.slug}>
+                  {sp.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button className="rounded-xl border border-line px-4 py-2 font-semibold">Adicionar site</button>
+        </form>
       </div>
     </div>
   );

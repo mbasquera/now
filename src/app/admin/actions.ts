@@ -40,3 +40,36 @@ export async function importNow() {
   revalidatePath("/admin");
   redirect(`/admin?importacao=${encodeURIComponent(result)}`);
 }
+
+/** Botão "Ler sites agora". */
+export async function crawlNow() {
+  await requireAdmin();
+  const { runCrawl } = await import("@/lib/ingest/crawler");
+  let result: string;
+  try {
+    const s = await runCrawl("admin");
+    result = s.ok ? "sites-ok" : s.message ?? "Erro ao ler os sites.";
+  } catch (e) {
+    result = `Erro inesperado: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  revalidatePath("/admin");
+  redirect(`/admin?sites=${encodeURIComponent(result)}`);
+}
+
+export async function addSite(form: FormData) {
+  const { supabase } = await requireAdmin();
+  const url = String(form.get("url") ?? "").trim();
+  const link_pattern = String(form.get("link_pattern") ?? "").trim() || null;
+  const sport_slug = String(form.get("sport_slug") ?? "").trim() || null;
+  if (!/^https?:\/\/\S+\.\S+/.test(url)) redirect(`/admin?sites=${encodeURIComponent("Informe um link começando com https://")}`);
+  const { error } = await supabase.from("crawl_sources").insert({ url, link_pattern, sport_slug });
+  revalidatePath("/admin");
+  redirect(`/admin?sites=${encodeURIComponent(error ? `Erro: ${error.message}` : "site-adicionado")}`);
+}
+
+export async function removeSite(form: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.from("crawl_sources").delete().eq("id", Number(form.get("id")));
+  revalidatePath("/admin");
+  redirect("/admin");
+}
