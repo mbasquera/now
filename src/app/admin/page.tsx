@@ -191,6 +191,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   <p className="text-muted">
                     {SPORT_LABEL[sport] ?? sport}: {s.found} jogo(s) no Brasil, {s.inCapitals} em capitais, {s.saved} salvo(s)
                     {s.cancelled > 0 && `, ${s.cancelled} adiado(s)/cancelado(s)`}
+                    {!!s.enriched && ` · ${s.enriched} com local completado pelo estádio do mandante`}
                     {!!s.skippedDays && ` · ${s.skippedDays} dia(s) fora do plano grátis`}
                   </p>
                   {s.errors.slice(0, 3).map((err, i) => (

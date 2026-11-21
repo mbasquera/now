@@ -7,6 +7,9 @@ import {
   CANCELLED,
   DURATION_MIN,
   fetchBrazilGames,
+  fetchFootballTeamVenue,
+  fetchFootballVenue,
+  type Venue,
   type ExternalGame,
   type SportKey,
 } from "./apisports";
@@ -25,6 +28,7 @@ export type SportSummary = {
   saved: number;
   cancelled: number;
   skippedDays?: number; // dias fora do alcance do plano (não é erro)
+  enriched?: number; // jogos sem local na fonte que tiveram o estádio encontrado
   errors: string[];
 };
 export type ImportSummary = { ok: boolean; message?: string; sports: Partial<Record<SportKey, SportSummary>> };
@@ -94,6 +98,59 @@ function checkUrl(g: ExternalGame, start: Date) {
   return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
 }
 
+const MAX_LOOKUPS = 25; // consultas extras por execução para completar locais (o grátis tem 100/dia)
+const CACHE_DAYS = 30;
+
+/**
+ * Completa o local de jogos de futebol que vieram sem cidade: primeiro pelo id do estádio, senão pelo
+ * estádio cadastrado do time mandante. Guarda as respostas em venue_cache para não gastar a cota de novo.
+ */
+async function enrichFootball(db: SupabaseClient, games: ExternalGame[], apiKey: string, summary: SportSummary) {
+  const keyOf = (g: ExternalGame) =>
+    g.venueId ? `futebol:venue:${g.venueId}` : g.homeId ? `futebol:team:${g.homeId}` : null;
+  const keys = [...new Set(games.map(keyOf).filter((k): k is string => !!k))];
+  if (!keys.length) return;
+
+  const cache = new Map<string, Venue>();
+  const since = new Date(Date.now() - CACHE_DAYS * 86_400_000).toISOString();
+  const { data, error } = await db
+    .from("venue_cache")
+    .select("key, name, city")
+    .in("key", keys)
+    .gt("fetched_at", since);
+  if (error) {
+    summary.errors.push(`Cache de estádios indisponível (rode supabase/migrations/0007_estadios.sql): ${error.message}`);
+    return;
+  }
+  data!.forEach((r) => cache.set(r.key as string, { name: r.name as string | null, city: r.city as string | null }));
+
+  const missing = keys.filter((k) => !cache.has(k)).slice(0, MAX_LOOKUPS);
+  const fresh: { key: string; name: string | null; city: string | null; fetched_at: string }[] = [];
+  for (const key of missing) {
+    const [, kind, id] = key.split(":");
+    try {
+      const v =
+        kind === "venue" ? await fetchFootballVenue(Number(id), apiKey) : await fetchFootballTeamVenue(Number(id), apiKey);
+      const entry = { name: v?.name ?? null, city: v?.city ?? null };
+      cache.set(key, entry);
+      fresh.push({ key, ...entry, fetched_at: new Date().toISOString() });
+    } catch (e) {
+      if (e instanceof PlanLimitError) break;
+      summary.errors.push(`Estádio ${key}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  if (fresh.length) await db.from("venue_cache").upsert(fresh, { onConflict: "key" });
+
+  for (const g of games) {
+    const k = keyOf(g);
+    const v = k ? cache.get(k) : undefined;
+    if (!v?.city) continue;
+    g.venueCity = v.city;
+    g.venueName = g.venueName || v.name;
+    g.venueFrom = k!.includes(":team:") ? "home-team" : "fixture";
+  }
+}
+
 async function importSport(db: SupabaseClient, ids: Ids, sport: SportKey, apiKey: string): Promise<SportSummary> {
   const summary: SportSummary = { found: 0, inCapitals: 0, saved: 0, cancelled: 0, errors: [] };
   const sportId = ids.sports.get(sport);
@@ -104,6 +161,7 @@ async function importSport(db: SupabaseClient, ids: Ids, sport: SportKey, apiKey
 
   const results = await Promise.allSettled(nextDates(DAYS_AHEAD).map((d) => fetchBrazilGames(sport, d, apiKey)));
   const games: { game: ExternalGame; citySlug: string }[] = [];
+  const all: ExternalGame[] = [];
   for (const r of results) {
     if (r.status === "rejected" && r.reason instanceof PlanLimitError) {
       summary.skippedDays = (summary.skippedDays ?? 0) + 1;
@@ -113,12 +171,22 @@ async function importSport(db: SupabaseClient, ids: Ids, sport: SportKey, apiKey
       summary.errors.push(r.reason instanceof ApiSportsError ? r.reason.message : String(r.reason));
       continue;
     }
-    for (const game of r.value) {
-      summary.found++;
-      // Futebol: só pela cidade do estádio. Basquete/vôlei (sem estádio na API): pelo nome exato do mandante.
-      const citySlug = sport === "futebol" ? cityFromVenueCity(game.venueCity) : cityFromTeam(game.home);
-      if (citySlug && ids.cities.has(citySlug)) games.push({ game, citySlug });
-    }
+    summary.found += r.value.length;
+    all.push(...r.value);
+  }
+
+  // Futebol sem cidade do estádio: tenta descobrir o estádio antes de desistir do jogo.
+  if (sport === "futebol") {
+    const noCity = all.filter((g) => !g.venueCity);
+    const before = noCity.length;
+    await enrichFootball(db, noCity, apiKey, summary);
+    summary.enriched = before - noCity.filter((g) => !g.venueCity).length;
+  }
+
+  for (const game of all) {
+    // Futebol: só pela cidade do estádio. Basquete/vôlei (sem estádio na API): pelo nome exato do mandante.
+    const citySlug = sport === "futebol" ? cityFromVenueCity(game.venueCity) : cityFromTeam(game.home);
+    if (citySlug && ids.cities.has(citySlug)) games.push({ game, citySlug });
   }
   summary.inCapitals = games.length;
   if (!games.length) return summary;
@@ -155,7 +223,12 @@ async function importSport(db: SupabaseClient, ids: Ids, sport: SportKey, apiKey
       city_id: ids.cities.get(citySlug)!,
       sport_id: sportId,
       title: sportTitle(game),
-      description: [game.leagueName, game.round].filter(Boolean).join(" · "),
+      description: [
+        [game.leagueName, game.round].filter(Boolean).join(" · "),
+        game.venueFrom === "home-team" ? "Local: estádio do time mandante (a fonte não informou o local do jogo)." : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
       venue_name: venue,
       address: `${city.name} - ${city.uf}`,
       starts_at: start.toISOString(),

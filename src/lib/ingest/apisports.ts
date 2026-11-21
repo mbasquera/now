@@ -21,15 +21,18 @@ export type ExternalGame = {
   leagueName: string;
   round: string | null;
   home: string;
+  homeId: number | null;
   away: string;
+  venueId: number | null;
   venueName: string | null;
   venueCity: string | null;
+  venueFrom?: "fixture" | "home-team"; // de onde veio o local
 };
 
 type FootballFixture = {
-  fixture: { id: number; date: string; status: { short: string }; venue: { name: string | null; city: string | null } };
+  fixture: { id: number; date: string; status: { short: string }; venue: { id: number | null; name: string | null; city: string | null } };
   league: { id: number; name: string; country: string; round?: string };
-  teams: { home: { name: string }; away: { name: string } };
+  teams: { home: { id: number; name: string }; away: { name: string } };
 };
 
 type Game = {
@@ -81,9 +84,12 @@ export async function fetchBrazilGames(sport: SportKey, date: string, apiKey: st
         leagueName: f.league.name,
         round: f.league.round ?? null,
         home: f.teams.home.name,
+        homeId: f.teams.home.id ?? null,
         away: f.teams.away.name,
+        venueId: f.fixture.venue?.id ?? null,
         venueName: f.fixture.venue?.name ?? null,
         venueCity: f.fixture.venue?.city ?? null,
+        venueFrom: "fixture" as const,
       }));
   }
 
@@ -98,10 +104,36 @@ export async function fetchBrazilGames(sport: SportKey, date: string, apiKey: st
       leagueName: g.league.name,
       round: g.week ?? null,
       home: g.teams.home.name,
+      homeId: null,
       away: g.teams.away.name,
+      venueId: null,
       venueName: null,
       venueCity: null,
     }));
+}
+
+export type Venue = { name: string | null; city: string | null };
+
+async function getJson(url: string, apiKey: string) {
+  const res = await fetch(url, { headers: { "x-apisports-key": apiKey }, cache: "no-store" });
+  if (!res.ok) throw new ApiSportsError(`HTTP ${res.status} em ${url}`);
+  const body = (await res.json()) as ApiResponse<unknown>;
+  const err = errorText(body.errors);
+  if (err) throw new ApiSportsError(err);
+  return body.response;
+}
+
+/** Estádio de um local já conhecido pelo id (futebol). */
+export async function fetchFootballVenue(venueId: number, apiKey: string): Promise<Venue | null> {
+  const r = (await getJson(`${HOSTS.futebol.base}/venues?id=${venueId}`, apiKey)) as Venue[];
+  return r[0] ? { name: r[0].name, city: r[0].city } : null;
+}
+
+/** Estádio cadastrado do time (futebol), usado quando o jogo vem sem local. */
+export async function fetchFootballTeamVenue(teamId: number, apiKey: string): Promise<Venue | null> {
+  const r = (await getJson(`${HOSTS.futebol.base}/teams?id=${teamId}`, apiKey)) as { venue?: Venue }[];
+  const v = r[0]?.venue;
+  return v ? { name: v.name, city: v.city } : null;
 }
 
 /** Jogos que não vão mais acontecer nessa data. */
