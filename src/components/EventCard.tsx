@@ -41,7 +41,9 @@ export function EventCard({
         <p className="truncate text-sm text-muted">{event.venueName}</p>
         <p className="mt-0.5 text-sm">
           {state === "live"
-            ? `até ${formatTime(event.endsAt, timezone)}`
+            ? event.source === "api-sports"
+              ? `começou às ${formatTime(event.startsAt, timezone)}`
+              : `até ${formatTime(event.endsAt, timezone)}`
             : `${formatDayLabel(event.startsAt, now, timezone)}, ${formatTime(event.startsAt, timezone)}`}
           <span className="text-muted"> · </span>
           <span className={event.isFree ? "text-accent" : ""}>{formatPrice(event)}</span>

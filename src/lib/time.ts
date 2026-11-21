@@ -60,7 +60,7 @@ export function formatCountdown(minutes: number): string {
 
 export function formatPrice(event: SportEvent): string {
   if (event.isFree) return "Grátis";
-  if (!event.priceCents) return "Ingresso pago";
+  if (!event.priceCents) return event.source === "api-sports" ? "Preço não informado" : "Ingresso pago";
   return (event.priceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
