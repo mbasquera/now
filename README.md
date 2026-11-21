@@ -85,9 +85,9 @@ Em `/admin > Sites lidos pelo robô` você cadastra páginas públicas de evento
 - tem leitores próprios (`src/lib/ingest/parsers.ts`) para sites oficiais sem schema.org: tabela da **LNF** (futsal) e agenda da **Superliga** na CBV (vôlei). Só entram jogos em que a página mostra data, hora, ginásio e cidade;
 - não duplica jogo que já veio da API (mesmo esporte, cidade e horário, ±45 min);
 - só aceita eventos com data, cidade de capital (`addressLocality`) e esporte reconhecível (pelo nome ou pelo esporte padrão do site);
-- grava tudo como **pendente**, com o link da página como fonte, para o admin aprovar.
+- grava os eventos já **aprovados**, com o link da página como fonte (a moderação fica só para divulgações de organizadores; um evento que o admin recusou continua recusado).
 
-Rode `supabase/migrations/0007_estadios.sql`, `0008_sites.sql` e `0009_sites_oficiais.sql` (cadastra os sites oficiais) antes de usar.
+Rode `supabase/migrations/0007_estadios.sql`, `0008_sites.sql`, `0009_sites_oficiais.sql` (cadastra os sites oficiais) e `0010_aprovar_importados.sql` (aprova os eventos de sites que estavam pendentes) antes de usar.
 
 Sites pesquisados em 21/11/2026 e não cadastrados: IBJJF (não tem lista pública de eventos que o robô alcance), Smoothcomp (lista só aparece com JavaScript), MartialMatch (sem eventos no Brasil na lista), CBF (as páginas de Série A/B mostram só a classificação, sem a agenda), NBB/LNB (a tabela só tinha jogos já encerrados; o basquete já vem pela API) e Sympla (o robots.txt não respondeu).
 

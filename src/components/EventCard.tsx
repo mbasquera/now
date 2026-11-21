@@ -3,7 +3,7 @@ import type { LiveState, SportEvent } from "@/lib/types";
 import { getSport } from "@/lib/sports";
 import { formatDayLabel, formatPrice, formatTime, minutesUntil } from "@/lib/time";
 import { LiveBadge } from "./LiveBadge";
-import { sourceLabel } from "@/lib/source";
+import { isImported, sourceLabel } from "@/lib/source";
 
 export function EventCard({
   event,
@@ -41,7 +41,7 @@ export function EventCard({
         <p className="truncate text-sm text-muted">{event.venueName}</p>
         <p className="mt-0.5 text-sm">
           {state === "live"
-            ? event.source === "api-sports"
+            ? isImported(event.source)
               ? `começou às ${formatTime(event.startsAt, timezone)}`
               : `até ${formatTime(event.endsAt, timezone)}`
             : `${formatDayLabel(event.startsAt, now, timezone)}, ${formatTime(event.startsAt, timezone)}`}
