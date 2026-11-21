@@ -3,6 +3,7 @@ import { getCity } from "../cities";
 import { UNKNOWN_VENUE } from "../source";
 import { checkSecretKey, getSupabaseAdmin } from "../supabase/admin";
 import { cityFromVenueCity, normalize } from "./match-city";
+import { parserFor } from "./parsers";
 
 /**
  * Leitor "educado" de sites públicos de eventos.
@@ -10,8 +11,9 @@ import { cityFromVenueCity, normalize } from "./match-city";
  * - Respeita o robots.txt de cada site (se proibir, não lê) e o Crawl-delay; espera pelo menos 5 s entre
  *   duas páginas do mesmo site e lê no máximo PAGES_PER_SOURCE páginas por site em cada execução.
  * - Não relê a mesma página de evento por 24 h (tabela crawl_pages).
- * - Só entende dados estruturados schema.org (JSON-LD do tipo Event/SportsEvent), que os sites publicam
- *   justamente para buscadores. Sem isso, não adivinha nada.
+ * - Entende dados estruturados schema.org (JSON-LD do tipo Event/SportsEvent), que os sites publicam
+ *   justamente para buscadores, e alguns sites oficiais com leitor próprio (parsers.ts). Fora isso, não adivinha nada.
+ * - Jogo que já veio da API (mesmo esporte, cidade e horário) não é duplicado.
  * - Evento sem cidade de capital, sem esporte reconhecível ou sem data é ignorado.
  * - Tudo entra como PENDENTE, com o link da página como fonte, para o admin conferir.
  */
@@ -122,6 +124,7 @@ export type SiteEvent = {
   isFree?: boolean;
   priceCents?: number | null;
   description?: string;
+  sport?: string;
 };
 
 function asArray<T>(v: T | T[] | undefined | null): T[] {
@@ -255,7 +258,7 @@ async function crawlSource(
   try {
     const html = await politeFetch(src.url, deadline);
     result.pages++;
-    events.push(...extractEvents(html, src.url));
+    events.push(...extractEvents(html, src.url), ...(parserFor(src.url)?.(html, src.url) ?? []));
 
     if (src.link_pattern) {
       const links = extractLinks(html, src.url, src.link_pattern);
@@ -266,7 +269,7 @@ async function crawlSource(
         try {
           const page = await politeFetch(link, deadline);
           result.pages++;
-          events.push(...extractEvents(page, link));
+          events.push(...extractEvents(page, link), ...(parserFor(link)?.(page, link) ?? []));
           await db.from("crawl_pages").upsert({ url: link, fetched_at: new Date().toISOString() });
         } catch (e) {
           if (e instanceof Skip) {
@@ -295,7 +298,7 @@ async function crawlSource(
     if (!end || end <= start) end = new Date(start.getTime() + 3 * 3_600_000);
     if (end.getTime() < now) continue;
     const citySlug = cityFromVenueCity(ev.locality);
-    const sportSlug = detectSport(`${ev.name} ${ev.description ?? ""}`) ?? src.sport_slug;
+    const sportSlug = ev.sport ?? detectSport(`${ev.name} ${ev.description ?? ""}`) ?? src.sport_slug;
     if (!citySlug || !sportSlug || !ids.cities.has(citySlug) || !ids.sports.has(sportSlug)) continue;
     const city = getCity(citySlug)!;
     organizerId ??= await organizerFor(db, host);
@@ -316,6 +319,25 @@ async function crawlSource(
       ticket_url: ev.url,
       source_url: ev.url,
     });
+  }
+
+  if (rows.length) {
+    // Jogo que já existe por outra fonte (ex.: API) no mesmo esporte, cidade e horário (±45 min) não entra de novo.
+    const times = rows.map((r) => new Date(r.starts_at as string).getTime());
+    const { data: others } = await db
+      .from("events")
+      .select("sport_id, city_id, starts_at")
+      .neq("source", SITE_SOURCE)
+      .gte("starts_at", new Date(Math.min(...times) - 2_700_000).toISOString())
+      .lte("starts_at", new Date(Math.max(...times) + 2_700_000).toISOString());
+    const dup = (r: Record<string, unknown>) =>
+      (others ?? []).some(
+        (o) =>
+          o.sport_id === r.sport_id &&
+          o.city_id === r.city_id &&
+          Math.abs(new Date(o.starts_at as string).getTime() - new Date(r.starts_at as string).getTime()) <= 2_700_000,
+      );
+    for (let i = rows.length - 1; i >= 0; i--) if (dup(rows[i])) rows.splice(i, 1);
   }
 
   if (rows.length) {
