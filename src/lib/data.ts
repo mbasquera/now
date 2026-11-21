@@ -23,17 +23,36 @@ type EventRow = {
   status: SportEvent["status"];
   source: string;
   source_url: string | null;
+  home_name?: string | null;
+  home_logo?: string | null;
+  away_name?: string | null;
+  away_logo?: string | null;
+  league_logo?: string | null;
   sport: { slug: string } | null;
   city: { slug: string } | null;
   organizer: { name: string; instagram: string | null; whatsapp: string | null } | null;
 };
 
-const SELECT = `
+const BASE_SELECT = `
   id, title, venue_name, address, maps_url, starts_at, ends_at, is_free, price_cents,
   ticket_url, description, image_url, status, source, source_url,
   sport:sports(slug), city:cities!inner(slug),
   organizer:organizers(name, instagram, whatsapp)
 `;
+const TEAM_SELECT = `${BASE_SELECT}, home_name, home_logo, away_name, away_logo, league_logo`;
+
+// Enquanto a 0011_escudos.sql não roda no banco, as colunas de escudo não existem: lê sem elas.
+let teamColumns = true;
+function select() {
+  return teamColumns ? TEAM_SELECT : BASE_SELECT;
+}
+function missingTeamColumns(error: { message?: string } | null) {
+  if (error && teamColumns && /home_name|home_logo|away_name|away_logo|league_logo/.test(error.message ?? "")) {
+    teamColumns = false;
+    return true;
+  }
+  return false;
+}
 
 function fromRow(r: EventRow): SportEvent {
   return {
@@ -57,6 +76,9 @@ function fromRow(r: EventRow): SportEvent {
     status: r.status,
     source: r.source,
     sourceUrl: r.source_url,
+    home: r.home_name ? { name: r.home_name, logo: r.home_logo ?? null } : null,
+    away: r.away_name ? { name: r.away_name, logo: r.away_logo ?? null } : null,
+    leagueLogo: r.league_logo ?? null,
   };
 }
 
@@ -107,14 +129,17 @@ async function fetchCityEvents(citySlug: string, now: Date): Promise<SportEvent[
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   }
 
-  const { data, error } = await supabase
-    .from("events")
-    .select(SELECT)
-    .eq("status", "approved")
-    .eq("city.slug", citySlug)
-    .gt("ends_at", now.toISOString())
-    .lt("starts_at", limit.toISOString())
-    .order("starts_at");
+  const query = () =>
+    supabase
+      .from("events")
+      .select(select())
+      .eq("status", "approved")
+      .eq("city.slug", citySlug)
+      .gt("ends_at", now.toISOString())
+      .lt("starts_at", limit.toISOString())
+      .order("starts_at");
+  let { data, error } = await query();
+  if (missingTeamColumns(error)) ({ data, error } = await query());
   if (error) throw error;
   return (data as unknown as EventRow[]).map(fromRow);
 }
@@ -125,16 +150,53 @@ export async function getEvent(id: string): Promise<SportEvent | null> {
   if (!supabase) return showMockData ? (getMockEvents().find((e) => e.id === id) ?? null) : null;
 
   try {
-    const { data, error } = await supabase
-      .from("events")
-      .select(SELECT)
-      .eq("id", id)
-      .eq("status", "approved")
-      .maybeSingle();
+    const query = () => supabase.from("events").select(select()).eq("id", id).eq("status", "approved").maybeSingle();
+    let { data, error } = await query();
+    if (missingTeamColumns(error)) ({ data, error } = await query());
     if (error) throw error;
     return data ? fromRow(data as unknown as EventRow) : null;
   } catch (e) {
     console.error("[NOW] erro ao carregar evento:", e);
     return null;
   }
+}
+
+export type CityPulse = { live: number; today: number };
+
+/**
+ * Quantos eventos cada capital tem ao vivo e hoje (para a página inicial).
+ * Nunca lança: em caso de erro devolve um mapa vazio e a página mostra as cidades sem números.
+ */
+export async function getCityPulse(now = new Date()): Promise<Map<string, CityPulse>> {
+  const out = new Map<string, CityPulse>();
+  const until = new Date(now.getTime() + 24 * 3_600_000);
+  const add = (slug: string, startsAt: string) => {
+    const p = out.get(slug) ?? { live: 0, today: 0 };
+    if (new Date(startsAt) <= now) p.live++;
+    else p.today++;
+    out.set(slug, p);
+  };
+  const supabase = getSupabase();
+  if (!supabase) {
+    if (showMockData)
+      getMockEvents(now)
+        .filter((e) => new Date(e.endsAt) > now && new Date(e.startsAt) < until)
+        .forEach((e) => add(e.citySlug, e.startsAt));
+    return out;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("events")
+      .select("starts_at, city:cities!inner(slug)")
+      .eq("status", "approved")
+      .gt("ends_at", now.toISOString())
+      .lt("starts_at", until.toISOString())
+      .limit(2000);
+    if (error) throw error;
+    for (const r of data as unknown as { starts_at: string; city: { slug: string } | null }[])
+      if (r.city) add(r.city.slug, r.starts_at);
+  } catch (e) {
+    console.error("[NOW] erro ao contar eventos por cidade:", e);
+  }
+  return out;
 }

@@ -9,6 +9,8 @@ export type Sport = {
   slug: string;
   name: string;
   emoji: string;
+  /** Cor de destaque do esporte (ícone, faixas). */
+  color: string;
 };
 
 export type EventStatus = "pending" | "approved" | "rejected";
@@ -34,7 +36,13 @@ export type SportEvent = {
   status: EventStatus;
   source?: string; // "manual" (organizador) ou "api-sports" (importado)
   sourceUrl?: string | null; // onde conferir a informação
+  /** Confronto entre dois times (jogos importados). Escudos vêm da fonte, quando ela informa. */
+  home?: Team | null;
+  away?: Team | null;
+  leagueLogo?: string | null;
 };
+
+export type Team = { name: string; logo: string | null };
 
 /** Status calculado na hora a partir do início/fim. */
 export type LiveState = "live" | "soon" | "later_today" | "upcoming" | "ended";
