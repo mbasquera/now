@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { getCity } from "@/lib/cities";
 import { getEvent } from "@/lib/data";
 import { getSport } from "@/lib/sports";
-import { sourceDomain } from "@/lib/source";
+import { UNKNOWN_VENUE, sourceDomain } from "@/lib/source";
 import { formatDayLabel, formatPrice, formatTime, getLiveState, mapsLink, minutesUntil } from "@/lib/time";
 import { LiveBadge } from "@/components/LiveBadge";
 
@@ -26,6 +26,7 @@ export default async function EventPage({ params }: Props) {
   const now = new Date();
   const state = getLiveState(event, now, tz);
 
+  const imported = event.source === "api-sports";
   return (
     <article className="py-5">
       <Link href={city ? `/${city.slug}` : "/"} className="text-sm text-muted">
@@ -50,11 +51,15 @@ export default async function EventPage({ params }: Props) {
       </div>
       <h1 className="mt-2 text-2xl font-black leading-tight">{event.title}</h1>
 
+      {/* jogos importados: a fonte só informa o início (o fim é estimado) e não informa preço */}
       <dl className="mt-5 grid gap-3 rounded-2xl border border-line bg-surface p-4 text-sm">
         <div>
           <dt className="text-muted">Quando</dt>
           <dd className="font-semibold">
-            {formatDayLabel(event.startsAt, now, tz)}, {formatTime(event.startsAt, tz)} às {formatTime(event.endsAt, tz)}
+            {formatDayLabel(event.startsAt, now, tz)},{" "}
+            {imported
+              ? `início às ${formatTime(event.startsAt, tz)}`
+              : `${formatTime(event.startsAt, tz)} às ${formatTime(event.endsAt, tz)}`}
             {city && <span className="font-normal text-muted"> (horário de {city.name})</span>}
           </dd>
         </div>
@@ -70,14 +75,18 @@ export default async function EventPage({ params }: Props) {
       </dl>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <a
-          href={mapsLink(event)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-xl bg-accent px-4 py-3 text-center font-bold text-black"
-        >
-          Como chegar
-        </a>
+        {event.venueName === UNKNOWN_VENUE ? (
+          <span className="rounded-xl border border-line px-4 py-3 text-center text-muted">Local a confirmar</span>
+        ) : (
+          <a
+            href={mapsLink(event)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl bg-accent px-4 py-3 text-center font-bold text-black"
+          >
+            Como chegar
+          </a>
+        )}
         {event.ticketUrl ? (
           <a
             href={event.ticketUrl}
@@ -89,7 +98,7 @@ export default async function EventPage({ params }: Props) {
           </a>
         ) : (
           <span className="rounded-xl border border-line px-4 py-3 text-center text-muted">
-            {event.isFree ? "Entrada livre" : "Ingresso no local"}
+            {event.isFree ? "Entrada livre" : imported ? "Ingresso: consulte o clube" : "Ingresso no local"}
           </span>
         )}
       </div>

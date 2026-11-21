@@ -1,5 +1,8 @@
 import type { SportEvent } from "./types";
 
+/** Nome do local quando a fonte não informa o ginásio (a página do evento não mostra "Como chegar"). */
+export const UNKNOWN_VENUE = "Local a confirmar";
+
 /** "https://www.instagram.com/copasp/" -> "instagram.com" */
 export function sourceDomain(url: string | null | undefined): string | null {
   if (!url) return null;

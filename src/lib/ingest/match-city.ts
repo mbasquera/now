@@ -20,54 +20,38 @@ export function cityFromVenueCity(venueCity: string | null | undefined): string 
 }
 
 /**
- * Clubes conhecidos que mandam jogos em capitais. Usado quando a fonte não informa o estádio
- * (basquete e vôlei nunca informam). A primeira regra que casar vence, então as mais específicas vêm antes.
- * Edite à vontade: é só o nome do time (sem acento, minúsculo) e o slug da capital.
+ * Times de basquete e vôlei que mandam jogos em capitais. Usado só para basquete e vôlei, porque essas APIs
+ * não informam o ginásio. No futebol a cidade vem sempre do estádio (sem estádio, o jogo é ignorado).
+ *
+ * A comparação é pelo NOME INTEIRO do time (sem acento, minúsculo), aceitando só sufixos como "W", "Feminino",
+ * "Basquete" ou "Vôlei". Assim "Paulistano" casa, mas "Frei Paulistano" (Sergipe) não.
+ * Na dúvida o jogo fica de fora: é melhor faltar um jogo do que mostrar na cidade errada.
  */
-const TEAM_RULES: [RegExp, string][] = [
-  [/\bbotafogo (pb|jp)\b/, "joao-pessoa"],
-  [/\bamerica (rn|natal)\b/, "natal"],
-  [/\bamerica (mg|mineiro)\b/, "belo-horizonte"],
-  [/\batletico (go|goianiense)\b/, "goiania"],
-  [/\batletico (mg|mineiro)\b/, "belo-horizonte"],
-  [/\bathletico\b/, "curitiba"],
-  [/\bsada cruzeiro\b/, "belo-horizonte"],
-  [/\bvitoria (es|espirito santo)\b/, "vitoria"],
-  [/\b(ec )?vitoria\b/, "salvador"], // EC Vitória é de Salvador
-  [/\bsao paulo\b/, "sao-paulo"],
-  [/\b(corinthians|palmeiras|pinheiros|paulistano|portuguesa|juventus sp|nacional sp)\b/, "sao-paulo"],
-  [/\b(flamengo|fluminense|vasco|botafogo|tijuca|madureira|bangu|olaria|sesc rj)\b/, "rio-de-janeiro"],
-  [/\b(minas|cruzeiro)\b/, "belo-horizonte"],
-  [/\b(gremio|internacional|sao jose rs)\b/, "porto-alegre"],
-  [/\b(coritiba|parana clube)\b/, "curitiba"],
-  [/\b(sport recife|nautico|santa cruz|retro)\b/, "recife"],
-  [/\b(bahia|ypiranga ba)\b/, "salvador"],
-  [/\b(ceara|ferroviario)\b/, "fortaleza"],
-  [/\b(goias|vila nova)\b/, "goiania"],
-  [/\b(paysandu|remo|tuna luso)\b/, "belem"],
-  [/\b(amazonas|nacional am)\b/, "manaus"],
-  [/\babc\b/, "natal"],
-  [/\b(crb|csa)\b/, "maceio"],
-  [/\b(confianca|sergipe)\b/, "aracaju"],
-  [/\briver pi\b/, "teresina"],
-  [/\b(sampaio correa|moto club)\b/, "sao-luis"],
-  [/\b(avai|figueirense)\b/, "florianopolis"],
-  [/\b(gama|ceub|capital df|real brasilia)\b/, "brasilia"],
-  [/\b(mixto|operario mt)\b/, "cuiaba"],
-  [/\boperario ms\b/, "campo-grande"],
-  [/\bdesportiva\b/, "vitoria"],
-];
+const TEAMS: Record<string, string[]> = {
+  "sao-paulo": ["sao paulo", "pinheiros", "paulistano", "corinthians", "palmeiras", "sesc sp"],
+  "rio-de-janeiro": ["flamengo", "fluminense", "vasco", "vasco da gama", "botafogo", "tijuca", "sesc rj", "sesc rj flamengo"],
+  "belo-horizonte": ["minas", "minas tenis clube", "cruzeiro", "atletico mg", "america mg"],
+  brasilia: ["brasilia", "brasilia basquete", "brasilia volei", "ceub"],
+  fortaleza: ["fortaleza", "fortaleza basquete cearense", "fortaleza bc", "ceara"],
+  "porto-alegre": ["gremio", "internacional", "sogipa"],
+  curitiba: ["curitiba", "curitiba volei", "athletico pr", "coritiba"],
+  recife: ["sport", "sport recife"],
+  salvador: ["bahia", "vitoria ba"],
+  goiania: ["goias", "goiania", "goiania volei"],
+  florianopolis: ["florianopolis", "avai"],
+  "campo-grande": ["campo grande"],
+  manaus: ["manaus"],
+  cuiaba: ["cuiaba"],
+};
 
-// Nomes de capital que também são nome de time e apontariam para a cidade errada.
-const AMBIGUOUS_CITY_NAMES = new Set(["vitoria"]);
+const SUFFIXES = "(?: (?:w|women|fem|feminino|masculino|basquete|basketball|volei|volleyball|bc|ec|fc|sc|ac))*";
+const TEAM_RULES: [RegExp, string][] = Object.entries(TEAMS).flatMap(([slug, names]) =>
+  names.map((n) => [new RegExp(`^${n}${SUFFIXES}$`), slug] as [RegExp, string]),
+);
 
-/** Tenta descobrir a capital pelo nome do time mandante. */
+/** Capital do time mandante, só quando o nome é exatamente de um time conhecido. */
 export function cityFromTeam(teamName: string): string | null {
   const n = normalize(teamName);
   for (const [re, slug] of TEAM_RULES) if (re.test(n)) return slug;
-  for (const [name, slug] of CITY_BY_NAME) {
-    if (AMBIGUOUS_CITY_NAMES.has(name)) continue;
-    if (new RegExp(`\\b${name}\\b`).test(n)) return slug;
-  }
   return null;
 }
