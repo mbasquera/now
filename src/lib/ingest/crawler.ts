@@ -15,7 +15,8 @@ import { parserFor } from "./parsers";
  *   justamente para buscadores, e alguns sites oficiais com leitor próprio (parsers.ts). Fora isso, não adivinha nada.
  * - Jogo que já veio da API (mesmo esporte, cidade e horário) não é duplicado.
  * - Evento sem cidade de capital, sem esporte reconhecível ou sem data é ignorado.
- * - Tudo entra como PENDENTE, com o link da página como fonte, para o admin conferir.
+ * - Entra já APROVADO, com o link da página como fonte (o admin só modera divulgações de organizadores).
+ *   Se o admin já tiver recusado um evento, a recusa é mantida.
  */
 
 export const SITE_SOURCE = "site";
@@ -350,7 +351,7 @@ async function crawlSource(
     const prev = new Map((existing ?? []).map((e) => [e.external_id as string, e]));
     for (const r of rows) {
       const p = prev.get(r.external_id as string);
-      r.status = p?.status ?? "pending";
+      r.status = p?.status === "rejected" ? "rejected" : "approved";
       r.rejection_reason = p?.rejection_reason ?? null;
     }
     const unique = [...new Map(rows.map((r) => [r.external_id as string, r])).values()];

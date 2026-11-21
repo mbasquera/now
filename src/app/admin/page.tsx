@@ -29,6 +29,7 @@ type Row = {
   price_cents: number | null;
   image_url: string | null;
   source_url: string | null;
+  source: string | null;
   status: SportEvent["status"];
   updated_at: string;
   sport: { slug: string } | null;
@@ -49,7 +50,7 @@ type Site = { id: number; url: string; link_pattern: string | null; sport_slug: 
 const SPORT_LABEL: Record<string, string> = { futebol: "Futebol", basquete: "Basquete", volei: "Vôlei" };
 
 const SELECT =
-  "id, title, description, venue_name, address, starts_at, ends_at, is_free, price_cents, image_url, source_url, status, updated_at, sport:sports(slug), city:cities(slug), organizer:organizers(name, instagram, whatsapp)";
+  "id, title, description, venue_name, address, starts_at, ends_at, is_free, price_cents, image_url, source_url, source, status, updated_at, sport:sports(slug), city:cities(slug), organizer:organizers(name, instagram, whatsapp)";
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ importacao?: string; sites?: string }> }) {
   if (!isSupabaseConfigured)
@@ -101,7 +102,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               <h2 className="font-bold">{e.title}</h2>
               <p className="text-sm">
                 {formatDayLabel(e.starts_at, now, tz)}, {formatTime(e.starts_at, tz)}–{formatTime(e.ends_at, tz)} ·{" "}
-                {formatPrice({ isFree: e.is_free, priceCents: e.price_cents } as SportEvent)}
+                {formatPrice({ isFree: e.is_free, priceCents: e.price_cents, source: e.source } as SportEvent)}
               </p>
               <p className="text-sm text-muted">
                 {e.venue_name} – {e.address}

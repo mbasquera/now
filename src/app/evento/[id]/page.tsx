@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { getCity } from "@/lib/cities";
 import { getEvent } from "@/lib/data";
 import { getSport } from "@/lib/sports";
-import { UNKNOWN_VENUE, sourceDomain } from "@/lib/source";
+import { UNKNOWN_VENUE, isImported, sourceDomain } from "@/lib/source";
 import { formatDayLabel, formatPrice, formatTime, getLiveState, mapsLink, minutesUntil } from "@/lib/time";
 import { LiveBadge } from "@/components/LiveBadge";
 
@@ -26,7 +26,7 @@ export default async function EventPage({ params }: Props) {
   const now = new Date();
   const state = getLiveState(event, now, tz);
 
-  const imported = event.source === "api-sports";
+  const imported = isImported(event.source);
   return (
     <article className="py-5">
       <Link href={city ? `/${city.slug}` : "/"} className="text-sm text-muted">
@@ -116,6 +116,10 @@ export default async function EventPage({ params }: Props) {
           <p className="mt-1 text-sm">
             Importado automaticamente da API-Sports, que reúne os dados oficiais das competições ({event.organizerName}).
           </p>
+        ) : imported ? (
+          <p className="mt-1 text-sm">
+            Importado automaticamente da agenda oficial publicada em {sourceDomain(event.sourceUrl) ?? "site da competição"}.
+          </p>
         ) : (
           <p className="mt-1 text-sm">Divulgação do próprio organizador.</p>
         )}
@@ -126,7 +130,9 @@ export default async function EventPage({ params }: Props) {
             rel="noopener noreferrer"
             className="mt-2 inline-block text-sm text-accent underline"
           >
-            {event.source === "api-sports" ? "Conferir este jogo" : `Ver a divulgação (${sourceDomain(event.sourceUrl) ?? "link"})`}
+            {event.source === "api-sports"
+              ? "Conferir este jogo"
+              : `${imported ? "Ver na agenda oficial" : "Ver a divulgação"} (${sourceDomain(event.sourceUrl) ?? "link"})`}
           </a>
         ) : (
           <p className="mt-2 text-sm text-muted">Sem link de fonte.</p>

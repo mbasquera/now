@@ -13,6 +13,11 @@ export function sourceDomain(url: string | null | undefined): string | null {
   }
 }
 
+/** Evento trazido pelo próprio site (API ou robô de sites), e não divulgado por um organizador. */
+export function isImported(source: string | null | undefined): boolean {
+  return !!source && source !== "manual";
+}
+
 /** Texto curto da fonte para o card. */
 export function sourceLabel(event: Pick<SportEvent, "source" | "sourceUrl">): string | null {
   if (event.source === "api-sports") return "API-Sports (dados da competição)";

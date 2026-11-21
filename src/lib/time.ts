@@ -1,3 +1,4 @@
+import { isImported } from "./source";
 import type { LiveState, SportEvent } from "./types";
 
 export const SOON_WINDOW_MIN = 120;
@@ -60,7 +61,7 @@ export function formatCountdown(minutes: number): string {
 
 export function formatPrice(event: SportEvent): string {
   if (event.isFree) return "Grátis";
-  if (!event.priceCents) return event.source === "api-sports" ? "Preço não informado" : "Ingresso pago";
+  if (!event.priceCents) return isImported(event.source) ? "Preço não informado" : "Ingresso pago";
   return (event.priceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
