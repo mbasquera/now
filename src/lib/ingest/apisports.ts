@@ -1,14 +1,16 @@
 /**
- * Cliente mínimo da API-Sports (https://api-sports.io): uma chave serve para futebol, basquete e vôlei.
+ * Cliente mínimo da API-Sports (https://api-sports.io): a mesma chave serve para futebol, basquete, vôlei, handebol e rugby.
  * Cada esporte tem cota própria (100 consultas/dia no plano grátis); a importação gasta 1 consulta por dia buscado.
  */
 
-export type SportKey = "futebol" | "basquete" | "volei";
+export type SportKey = "futebol" | "basquete" | "volei" | "handebol" | "rugby";
 
 const HOSTS: Record<SportKey, { base: string; path: string }> = {
   futebol: { base: "https://v3.football.api-sports.io", path: "/fixtures" },
   basquete: { base: "https://v1.basketball.api-sports.io", path: "/games" },
   volei: { base: "https://v1.volleyball.api-sports.io", path: "/games" },
+  handebol: { base: "https://v1.handball.api-sports.io", path: "/games" },
+  rugby: { base: "https://v1.rugby.api-sports.io", path: "/games" },
 };
 
 /** Jogo já no formato comum, antes de virar evento. */
@@ -149,4 +151,4 @@ export async function fetchFootballTeamVenue(teamId: number, apiKey: string): Pr
 export const CANCELLED = new Set(["PST", "POST", "CANC", "ABD", "AWD", "WO", "AW"]);
 
 /** Duração estimada de cada esporte (a API não informa o fim). */
-export const DURATION_MIN: Record<SportKey, number> = { futebol: 120, basquete: 135, volei: 150 };
+export const DURATION_MIN: Record<SportKey, number> = { futebol: 120, basquete: 135, volei: 150, handebol: 90, rugby: 110 };

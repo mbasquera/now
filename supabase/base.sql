@@ -37,5 +37,10 @@ insert into public.sports (slug, name, emoji) values
   ('basquete', 'Basquete', '🏀'),
   ('futebol', 'Futebol', '⚽'),
   ('futsal', 'Futsal', '👟'),
-  ('volei', 'Vôlei', '🏐')
+  ('volei', 'Vôlei', '🏐'),
+  ('corrida', 'Corrida', '🏃'),
+  ('ciclismo', 'Ciclismo', '🚴'),
+  ('triatlo', 'Triatlo', '🏊'),
+  ('handebol', 'Handebol', '🤾'),
+  ('rugby', 'Rugby', '🏉')
 on conflict (slug) do update set name = excluded.name, emoji = excluded.emoji;

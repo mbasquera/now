@@ -61,6 +61,43 @@ export function SportIcon({ slug, className = "h-5 w-5" }: { slug: string; class
           <path d="M10 9.5h5M8.5 18v2.5h7.5V18" />
         </svg>
       );
+    case "handebol":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9.2" />
+          <path d="M12 2.8c-2.4 2.6-3.6 5.7-3.6 9.2s1.2 6.6 3.6 9.2M12 2.8c2.4 2.6 3.6 5.7 3.6 9.2s-1.2 6.6-3.6 9.2M3.6 8.5h16.8M3.6 15.5h16.8" />
+        </svg>
+      );
+    case "rugby":
+      return (
+        <svg {...common}>
+          <ellipse cx="12" cy="12" rx="10" ry="6" transform="rotate(-35 12 12)" />
+          <path d="M9.5 14.5l5-5M10.5 11.5l2 2M12 10l2 2" />
+        </svg>
+      );
+    case "corrida":
+      return (
+        <svg {...common}>
+          <circle cx="14.5" cy="4.5" r="1.8" />
+          <path d="M9 21l2.5-5.5L14 17v4M11.5 15.5l1.5-5.5-3 1.5-2 3M13 10l2.5 3 3 .5" />
+        </svg>
+      );
+    case "ciclismo":
+      return (
+        <svg {...common}>
+          <circle cx="5.5" cy="16.5" r="3.8" />
+          <circle cx="18.5" cy="16.5" r="3.8" />
+          <path d="M5.5 16.5l4-7h6l3 7M9.5 9.5L12 16.5h3.5M14 6.5h2.5" />
+        </svg>
+      );
+    case "triatlo":
+      return (
+        <svg {...common}>
+          <path d="M2.5 17c1.6 1.2 3.2 1.2 4.8 0s3.2-1.2 4.8 0 3.2 1.2 4.8 0 3.2-1.2 4.6 0" />
+          <circle cx="15.5" cy="6" r="1.8" />
+          <path d="M5 13.5l4.5-4 3 2 3.5-2" />
+        </svg>
+      );
     default:
       return (
         <svg {...common}>

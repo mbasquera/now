@@ -20,7 +20,7 @@ export function cityFromVenueCity(venueCity: string | null | undefined): string 
 }
 
 /**
- * Times de basquete e vôlei que mandam jogos em capitais. Usado só para basquete e vôlei, porque essas APIs
+ * Times de basquete, vôlei, handebol e rugby que mandam jogos em capitais. Usado só para esses esportes, porque essas APIs
  * não informam o ginásio. No futebol a cidade vem sempre do estádio (sem estádio, o jogo é ignorado).
  *
  * A comparação é pelo NOME INTEIRO do time (sem acento, minúsculo), aceitando só sufixos como "W", "Feminino",
@@ -28,7 +28,7 @@ export function cityFromVenueCity(venueCity: string | null | undefined): string 
  * Na dúvida o jogo fica de fora: é melhor faltar um jogo do que mostrar na cidade errada.
  */
 const TEAMS: Record<string, string[]> = {
-  "sao-paulo": ["sao paulo", "pinheiros", "paulistano", "corinthians", "palmeiras", "sesc sp"],
+  "sao-paulo": ["sao paulo", "pinheiros", "paulistano", "corinthians", "palmeiras", "sesc sp", "hebraica", "spac", "sao paulo athletic club", "pasteur", "band saracens"],
   "rio-de-janeiro": ["flamengo", "fluminense", "vasco", "vasco da gama", "botafogo", "tijuca", "sesc rj", "sesc rj flamengo"],
   "belo-horizonte": ["minas", "minas tenis clube", "cruzeiro", "atletico mg", "america mg"],
   brasilia: ["brasilia", "brasilia basquete", "brasilia volei", "ceub"],
@@ -44,7 +44,7 @@ const TEAMS: Record<string, string[]> = {
   cuiaba: ["cuiaba"],
 };
 
-const SUFFIXES = "(?: (?:w|women|fem|feminino|masculino|basquete|basketball|volei|volleyball|bc|ec|fc|sc|ac))*";
+const SUFFIXES = "(?: (?:w|women|fem|feminino|masculino|basquete|basketball|volei|volleyball|handebol|handball|rugby|bc|ec|fc|sc|ac))*";
 const TEAM_RULES: [RegExp, string][] = Object.entries(TEAMS).flatMap(([slug, names]) =>
   names.map((n) => [new RegExp(`^${n}${SUFFIXES}$`), slug] as [RegExp, string]),
 );

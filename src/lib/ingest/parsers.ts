@@ -1,3 +1,4 @@
+import { CITIES } from "../cities";
 import { normalize } from "./match-city";
 
 /**
@@ -163,10 +164,118 @@ export function parseCbv(html: string, pageUrl: string, now = new Date()): Parse
   return out;
 }
 
+
+// ---------- Corridas de rua: calendários oficiais das prefeituras ----------
+
+/** "2026-11-22" (só a data: o horário não foi informado e aparece como "a confirmar"). */
+function dateOnly(y: number, m: number, d: number) {
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+/**
+ * Prefeitura de São Paulo (SEME): uma linha por corrida, "22/11/2026 | NOME | LOCAL DE LARGADA | ORGANIZADOR".
+ * A página não informa horário, então o evento fica com "horário a confirmar".
+ */
+export function parseSpCorridas(html: string, pageUrl: string): ParsedEvent[] {
+  const out: ParsedEvent[] = [];
+  for (const line of htmlToLines(html)) {
+    const m = line.match(/^(\d{2})\/(\d{2})\/(\d{4})\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*$/);
+    if (!m) continue;
+    out.push({
+      name: m[4],
+      startDate: dateOnly(+m[3], +m[2], +m[1]),
+      url: pageUrl,
+      venueName: m[5],
+      locality: "São Paulo",
+      sport: "corrida",
+      description: `Corrida de rua organizada por ${m[6]} (calendário oficial da Prefeitura de São Paulo).`,
+    });
+  }
+  return out;
+}
+
+/** "8h", "6:30h", "10h30" -> [h, min] */
+function parseHour(s: string): [number, number] | null {
+  const m = s.match(/^(\d{1,2})(?:[:h](\d{2}))?h?$/i);
+  if (!m || +m[1] > 23) return null;
+  return [+m[1], +(m[2] ?? 0)];
+}
+
+/**
+ * Prefeitura de Porto Alegre (SMEL): "22/11/2026 10h NOME 4km 10km LOCAL SITE".
+ * O nome é o texto antes da primeira distância e o local é o texto depois da última.
+ */
+export function parsePoaCorridas(html: string, pageUrl: string): ParsedEvent[] {
+  const out: ParsedEvent[] = [];
+  const rows = [...html.matchAll(/<(tr|li|p)\b[^>]*>([\s\S]*?)<\/\1>/gi)].map((m) => textOf(m[2].replace(/<\/t[dh]>/gi, " ")));
+  for (const row of rows) {
+    const m = row.match(/^-?\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\S+)\s+(.+)$/);
+    if (!m) continue;
+    const hour = parseHour(m[4]);
+    let rest = hour ? m[5] : `${m[4]} ${m[5]}`;
+    rest = rest.replace(/\s*\bSITE\b\s*$/i, "").trim();
+    const dist = [...rest.matchAll(/\b\d+(?:[.,]\d+)?\s?km\b/gi)];
+    if (!dist.length) continue;
+    const first = dist[0];
+    const last = dist[dist.length - 1];
+    const name = rest.slice(0, first.index).trim();
+    const venue = rest.slice((last.index ?? 0) + last[0].length).trim();
+    if (!name || !venue) continue;
+    const y = +m[3];
+    const mo = +m[2];
+    const d = +m[1];
+    out.push({
+      name,
+      startDate: hour ? iso(y, mo, d, hour[0], hour[1]) : dateOnly(y, mo, d),
+      url: pageUrl,
+      venueName: venue,
+      locality: "Porto Alegre",
+      sport: "corrida",
+      description: `Corrida de rua (${dist.map((x) => x[0].replace(/\s/g, "")).join(", ")}). Calendário oficial da Prefeitura de Porto Alegre.`,
+    });
+  }
+  return out;
+}
+
+// ---------- intervals.icu (calendário de provas por país) ----------
+
+const MONTHS_EN: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+
+/**
+ * Cada prova aparece como "Nov 29, 2026 NOME Belo Horizonte, MG, Brasil Run".
+ * Só aceita quando a cidade é uma das capitais (o nome da capital precisa estar logo antes de ", UF, Brasil").
+ */
+export function parseIntervals(html: string, pageUrl: string, capitals: { name: string; uf: string }[]): ParsedEvent[] {
+  const text = htmlToLines(html).join(" ");
+  const sport = /\/cycling\//.test(pageUrl) ? "ciclismo" : /\/triathlon\//.test(pageUrl) ? "triatlo" : "corrida";
+  const out: ParsedEvent[] = [];
+  const re = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{4}) (.+?), ([A-Z]{2}), Brasil\b/g;
+  for (const m of text.matchAll(re)) {
+    const body = m[4];
+    const cap = capitals.find((c) => c.uf === m[5] && normalize(body).endsWith(` ${normalize(c.name)}`));
+    if (!cap) continue;
+    const name = body.slice(0, body.length - cap.name.length).replace(/[\s.·-]+$/, "").trim();
+    if (!name) continue;
+    out.push({
+      name,
+      startDate: dateOnly(+m[3], MONTHS_EN[m[1].toLowerCase()], +m[2]),
+      url: pageUrl,
+      locality: cap.name,
+      sport,
+      description: "Prova listada no calendário do intervals.icu. Confira local e horário no site do organizador.",
+    });
+  }
+  return out;
+}
+
 /** Leitor específico para a página, se houver. */
 export function parserFor(url: string): ((html: string, url: string) => ParsedEvent[]) | null {
   const u = new URL(url);
   if (u.host.endsWith("lnfoficial.com.br") && u.pathname.includes("tabela-de-jogos")) return parseLnf;
   if (u.host.endsWith("cbv.com.br") && u.pathname.includes("superliga")) return (h, p) => parseCbv(h, p);
+  if (u.host.endsWith("prefeitura.sp.gov.br") && u.pathname.includes("corridas_de_rua")) return parseSpCorridas;
+  if (u.host.endsWith("prefeitura.poa.br") && u.pathname.includes("corridas-de-rua")) return parsePoaCorridas;
+  if (u.host.endsWith("intervals.icu") && u.pathname.startsWith("/events/BR/"))
+    return (h, p) => parseIntervals(h, p, CITIES.map((c) => ({ name: c.name, uf: c.uf })));
   return null;
 }
