@@ -61,16 +61,21 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <Link href="/painel/perfil" className="text-accent underline">
             Editar perfil
           </Link>
-          {organizer.role === "admin" && (
-            <Link href="/admin" className="text-accent underline">
-              Moderação
-            </Link>
-          )}
           <form action={signOut}>
             <button className="text-muted underline">Sair</button>
           </form>
         </div>
       </div>
+
+      {organizer.role === "admin" && (
+        <Link
+          href="/admin"
+          className="mt-4 block rounded-2xl border border-accent/60 bg-surface p-4 hover:border-accent"
+        >
+          <p className="font-bold">Painel de admin →</p>
+          <p className="text-sm text-muted">Aprovar eventos e rodar a importação automática de jogos.</p>
+        </Link>
+      )}
 
       {salvo && (
         <p className="mt-4 rounded-xl bg-accent/15 p-3 text-sm text-accent">
