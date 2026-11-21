@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCity } from "../cities";
-import { getSupabaseAdmin } from "../supabase/admin";
+import { checkSecretKey, getSupabaseAdmin } from "../supabase/admin";
 import {
   ApiSportsError,
   CANCELLED,
@@ -175,12 +175,14 @@ export async function runImport(trigger: "cron" | "admin"): Promise<ImportSummar
   const db = getSupabaseAdmin();
   if (!db) return { ok: false, message: "Falta SUPABASE_SECRET_KEY nas variáveis de ambiente.", sports: {} };
   if (!apiKey) return { ok: false, message: "Falta API_SPORTS_KEY nas variáveis de ambiente.", sports: {} };
+  const keyProblem = checkSecretKey();
+  if (keyProblem) return { ok: false, message: keyProblem, sports: {} };
 
   const { data: run, error: runError } = await db.from("import_runs").insert({ trigger }).select("id").single();
   if (runError) {
     return {
       ok: false,
-      message: `Não consegui registrar a importação (${runError.message}). Rode supabase/migrations/0003_importacao.sql no Supabase.`,
+      message: `Não consegui registrar a importação (${runError.message}). Rode supabase/migrations/0005_permissoes.sql no SQL Editor do Supabase (e o 0003/0004, se ainda não rodou).`,
       sports: {},
     };
   }

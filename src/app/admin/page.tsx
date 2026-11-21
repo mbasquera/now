@@ -169,8 +169,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         {importacao && importacao !== "ok" && <p className="mt-3 rounded-xl bg-live/15 p-3 text-live">{importacao}</p>}
         {runsError && (
           <p className="mt-3 rounded-xl bg-live/15 p-3 text-live">
-            Não consegui ler o histórico de importações ({runsError.message}). Rode supabase/migrations/0003_importacao.sql e
-            0004_fonte.sql no SQL Editor do Supabase.
+            Não consegui ler o histórico de importações ({runsError.message}). Rode supabase/migrations/0005_permissoes.sql (e o 0003/0004, se ainda não rodou) no
+            SQL Editor do Supabase.
           </p>
         )}
         {!runsError && runs.length === 0 && <p className="mt-3 text-muted">Nenhuma importação ainda.</p>}
