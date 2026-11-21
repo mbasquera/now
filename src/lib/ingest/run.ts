@@ -176,7 +176,14 @@ export async function runImport(trigger: "cron" | "admin"): Promise<ImportSummar
   if (!db) return { ok: false, message: "Falta SUPABASE_SECRET_KEY nas variáveis de ambiente.", sports: {} };
   if (!apiKey) return { ok: false, message: "Falta API_SPORTS_KEY nas variáveis de ambiente.", sports: {} };
 
-  const { data: run } = await db.from("import_runs").insert({ trigger }).select("id").single();
+  const { data: run, error: runError } = await db.from("import_runs").insert({ trigger }).select("id").single();
+  if (runError) {
+    return {
+      ok: false,
+      message: `Não consegui registrar a importação (${runError.message}). Rode supabase/migrations/0003_importacao.sql no Supabase.`,
+      sports: {},
+    };
+  }
   let summary: ImportSummary;
   try {
     const ids = await loadIds(db);
