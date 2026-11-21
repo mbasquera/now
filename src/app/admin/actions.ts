@@ -28,7 +28,15 @@ export async function moderate(form: FormData) {
 export async function importNow() {
   await requireAdmin();
   const { runImport } = await import("@/lib/ingest/run");
-  await runImport("admin");
+  let result: string;
+  try {
+    const summary = await runImport("admin");
+    result = summary.ok
+      ? "ok"
+      : summary.message ?? "A importação terminou com erros. Veja os detalhes abaixo.";
+  } catch (e) {
+    result = `Erro inesperado: ${e instanceof Error ? e.message : String(e)}`;
+  }
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect(`/admin?importacao=${encodeURIComponent(result)}`);
 }

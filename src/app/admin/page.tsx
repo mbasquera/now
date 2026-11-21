@@ -9,6 +9,7 @@ import { SupabaseMissing } from "@/components/SupabaseMissing";
 import type { SportEvent } from "@/lib/types";
 import type { ImportSummary } from "@/lib/ingest/run";
 import { importNow, moderate } from "./actions";
+import { ImportButton } from "./ImportButton";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // o botão "Importar agora" roda a importação aqui
@@ -46,7 +47,7 @@ const SPORT_LABEL: Record<string, string> = { futebol: "Futebol", basquete: "Bas
 const SELECT =
   "id, title, description, venue_name, address, starts_at, ends_at, is_free, price_cents, image_url, source_url, status, updated_at, sport:sports(slug), city:cities(slug), organizer:organizers(name, instagram, whatsapp)";
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ importacao?: string }> }) {
   if (!isSupabaseConfigured)
     return (
       <div className="py-8">
@@ -59,7 +60,8 @@ export default async function AdminPage() {
   if (organizer?.role !== "admin") redirect("/painel");
 
   const now = new Date();
-  const [{ data: pending }, { data: recent }, { data: runsData }] = await Promise.all([
+  const { importacao } = await searchParams;
+  const [{ data: pending }, { data: recent }, { data: runsData, error: runsError }] = await Promise.all([
     supabase.from("events").select(SELECT).eq("status", "pending").gt("ends_at", now.toISOString()).order("starts_at"),
     supabase.from("events").select(SELECT).neq("status", "pending").order("updated_at", { ascending: false }).limit(10),
     supabase.from("import_runs").select("id, started_at, trigger, ok, summary").order("started_at", { ascending: false }).limit(5),
@@ -159,9 +161,19 @@ export default async function AdminPage() {
           nas capitais. Eles entram já aprovados.
         </p>
         <form action={importNow} className="mt-3">
-          <button className="rounded-xl border border-line px-4 py-2 font-semibold">Importar agora</button>
+          <ImportButton />
         </form>
-        {runs.length === 0 && <p className="mt-3 text-muted">Nenhuma importação ainda.</p>}
+        {importacao === "ok" && (
+          <p className="mt-3 rounded-xl bg-accent/15 p-3 text-accent">Importação concluída. Veja o resultado abaixo.</p>
+        )}
+        {importacao && importacao !== "ok" && <p className="mt-3 rounded-xl bg-live/15 p-3 text-live">{importacao}</p>}
+        {runsError && (
+          <p className="mt-3 rounded-xl bg-live/15 p-3 text-live">
+            Não consegui ler o histórico de importações ({runsError.message}). Rode supabase/migrations/0003_importacao.sql e
+            0004_fonte.sql no SQL Editor do Supabase.
+          </p>
+        )}
+        {!runsError && runs.length === 0 && <p className="mt-3 text-muted">Nenhuma importação ainda.</p>}
         <ul className="mt-3 space-y-3">
           {runs.map((r) => (
             <li key={r.id} className="border-t border-line pt-3">
