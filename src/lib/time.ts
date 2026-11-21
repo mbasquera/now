@@ -59,7 +59,8 @@ export function formatCountdown(minutes: number): string {
 }
 
 export function formatPrice(event: SportEvent): string {
-  if (event.isFree || !event.priceCents) return "Grátis";
+  if (event.isFree) return "Grátis";
+  if (!event.priceCents) return "Ingresso pago";
   return (event.priceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
