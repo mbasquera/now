@@ -12,6 +12,7 @@ export const SPORTS: Sport[] = [
   { slug: "corrida", name: "Corrida", emoji: "🏃", color: "#f472b6" },
   { slug: "ciclismo", name: "Ciclismo", emoji: "🚴", color: "#60a5fa" },
   { slug: "triatlo", name: "Triatlo", emoji: "🏊", color: "#22d3ee" },
+  { slug: "natacao", name: "Natação", emoji: "🏊", color: "#0ea5e9" },
 ];
 
 export const SPORTS_BY_SLUG = new Map(SPORTS.map((s) => [s.slug, s]));

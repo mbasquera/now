@@ -219,6 +219,7 @@ const SPORT_WORDS: [RegExp, string][] = [
   [/\b(handebol|handball)\b/, "handebol"],
   [/\brugby\b/, "rugby"],
   [/\b(triathlon|triatlo|ironman|duathlon|duatlo|aquathlon|aquatlo)\b/, "triatlo"],
+  [/\b(natacao|natação|travessia|aguas abertas|swim|swimming|maratona aquatica)\b/, "natacao"],
   [/\b(ciclismo|cycling|mtb|mountain bike|gran fondo|pedal|pedalada)\b/, "ciclismo"],
   [/\b(corrida|maratona|meia maratona|run|running|caminhada|trail|cross country)\b/, "corrida"],
   [/\b(futebol|football|soccer|campeonato brasileiro|copa do brasil)\b/, "futebol"],

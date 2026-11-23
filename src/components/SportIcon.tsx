@@ -90,6 +90,14 @@ export function SportIcon({ slug, className = "h-5 w-5" }: { slug: string; class
           <path d="M5.5 16.5l4-7h6l3 7M9.5 9.5L12 16.5h3.5M14 6.5h2.5" />
         </svg>
       );
+    case "natacao":
+      return (
+        <svg {...common}>
+          <circle cx="17" cy="7" r="1.8" />
+          <path d="M4 12.5l5-3.5 4 2.5 3-1.5" />
+          <path d="M2.5 16.5c1.6 1.2 3.2 1.2 4.8 0s3.2-1.2 4.8 0 3.2 1.2 4.8 0 3.2-1.2 4.6 0M2.5 20c1.6 1.2 3.2 1.2 4.8 0s3.2-1.2 4.8 0 3.2 1.2 4.8 0 3.2-1.2 4.6 0" />
+        </svg>
+      );
     case "triatlo":
       return (
         <svg {...common}>
