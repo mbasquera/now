@@ -241,21 +241,44 @@ export function parsePoaCorridas(html: string, pageUrl: string): ParsedEvent[] {
 
 const MONTHS_EN: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
 
+/** Esporte pelas etiquetas do fim da linha ("Run", "Ride", "Swim", "MTB", "Trail Run", "Open Water Swim"). */
+function intervalsSport(tags: string[]): string | null {
+  const run = tags.some((t) => /run/i.test(t));
+  const ride = tags.some((t) => /ride|mtb/i.test(t));
+  const swim = tags.some((t) => /swim/i.test(t));
+  if (swim && (run || ride)) return "triatlo";
+  if (swim) return "natacao";
+  if (ride && run) return "triatlo"; // duatlo
+  if (ride) return "ciclismo";
+  if (run) return "corrida";
+  return null;
+}
+
 /**
- * Cada prova aparece como "Nov 29, 2026 NOME Belo Horizonte, MG, Brasil Run".
- * Só aceita quando a cidade é uma das capitais (o nome da capital precisa estar logo antes de ", UF, Brasil").
+ * Cada prova aparece como "Nov 29, 2026 NOME Belo Horizonte, MG, Brasil Run Ride Swim".
+ * O local tem formatos variados ("Brasília - Plano Piloto, Brasília - DF, Brasil", "Belo Horizonte, State of Minas
+ * Gerais, Brazil"). Só aceita quando aparece o nome de uma capital seguido de "," ou " -"; o nome da prova é o que vem
+ * antes. O esporte sai das etiquetas do fim.
  */
 export function parseIntervals(html: string, pageUrl: string, capitals: { name: string; uf: string }[]): ParsedEvent[] {
-  const text = htmlToLines(html).join(" ");
-  const sport = /\/cycling\//.test(pageUrl) ? "ciclismo" : /\/triathlon\//.test(pageUrl) ? "triatlo" : "corrida";
+  const text = htmlToLines(html).join(" ").replace(/https?:\/\/\S+/g, " ").replace(/\s+/g, " ");
+  const dateRe = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{4}) /g;
+  const marks = [...text.matchAll(dateRe)];
+  const capRe = new RegExp(`(${capitals.map((c) => c.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?=\\s*[,-])`, "iu");
+  const tagRe = /\s((?:(?:Open Water Swim|Trail Run|Run|Ride|Swim|MTB)\s*)+)$/;
   const out: ParsedEvent[] = [];
-  const re = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{4}) (.+?), ([A-Z]{2}), Brasil\b/g;
-  for (const m of text.matchAll(re)) {
-    const body = m[4];
-    const cap = capitals.find((c) => c.uf === m[5] && normalize(body).endsWith(` ${normalize(c.name)}`));
-    if (!cap) continue;
-    const name = body.slice(0, body.length - cap.name.length).replace(/[\s.·-]+$/, "").trim();
-    if (!name) continue;
+  marks.forEach((m, i) => {
+    const entry = text.slice((m.index ?? 0) + m[0].length, marks[i + 1]?.index ?? text.length).trim();
+    const tagMatch = entry.match(tagRe);
+    if (!tagMatch) return;
+    const sport = intervalsSport(tagMatch[1].trim().split(/\s+(?=[A-Z])/));
+    const body = entry.slice(0, tagMatch.index).trim();
+    if (!sport || !/\b(Brasil|Brazil)$/.test(body)) return;
+    const cm = body.match(capRe);
+    if (!cm || cm.index === undefined) return;
+    const cap = capitals.find((c) => normalize(c.name) === normalize(cm[1]))!;
+    const name = body.slice(0, cm.index).replace(/[\s.·,-]+$/, "").trim();
+    if (!name) return;
     out.push({
       name,
       startDate: dateOnly(+m[3], MONTHS_EN[m[1].toLowerCase()], +m[2]),
@@ -264,7 +287,7 @@ export function parseIntervals(html: string, pageUrl: string, capitals: { name: 
       sport,
       description: "Prova listada no calendário do intervals.icu. Confira local e horário no site do organizador.",
     });
-  }
+  });
   return out;
 }
 
