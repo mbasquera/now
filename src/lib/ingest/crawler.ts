@@ -127,6 +127,7 @@ export type SiteEvent = {
   priceCents?: number | null;
   description?: string;
   sport?: string;
+  externalId?: string;
 };
 
 function asArray<T>(v: T | T[] | undefined | null): T[] {
@@ -255,14 +256,53 @@ async function organizerFor(db: SupabaseClient, host: string): Promise<string> {
   return data!.id as string;
 }
 
+export function isEspnCalendar(url: string): boolean {
+  const u = new URL(url);
+  return /(^|\.)espn(deportes)?\.com(\.br)?$/.test(u.host) && /^\/futbol\/calendario\/?$/.test(u.pathname);
+}
+
+/** Data (AAAAMMDD) no horário de Brasília, "offset" dias depois de "now". */
+function brDay(now: number, offset: number): string {
+  return new Date(now + offset * 86_400_000).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }).replaceAll("-", "");
+}
+
+/**
+ * Páginas de dia do calendário da ESPN (/futbol/calendario/_/fecha/AAAAMMDD): sempre hoje e amanhã, mais um rodízio
+ * dos dias 2 a LOOKAHEAD_DAYS que muda a cada dia. Assim os 30 dias são cobertos em poucos dias sem pesar no site.
+ */
+export function espnDayPages(srcUrl: string, count: number, now = Date.now()): string[] {
+  const origin = new URL(srcUrl).origin;
+  const rest = Array.from({ length: LOOKAHEAD_DAYS - 1 }, (_, i) => i + 2);
+  const extra = Math.max(0, count - 2);
+  const start = extra ? (Math.floor(now / 86_400_000) * extra) % rest.length : 0;
+  const picked = Array.from({ length: Math.min(extra, rest.length) }, (_, i) => rest[(start + i) % rest.length]);
+  return [0, 1, ...picked].slice(0, count).map((d) => `${origin}/futbol/calendario/_/fecha/${brDay(now, d)}`);
+}
+
 async function crawlSource(
   db: SupabaseClient,
   src: Source,
   ids: { cities: Map<string, number>; sports: Map<string, number> },
   deadline: number,
+  espnPages = PAGES_PER_SOURCE,
 ): Promise<SiteResult> {
   const result: SiteResult = { url: src.url, pages: 0, found: 0, saved: 0 };
   const events: SiteEvent[] = [];
+  if (isEspnCalendar(src.url)) {
+    // Calendário da ESPN: uma página por dia. Lê hoje, amanhã e um rodízio dos dias seguintes até 30 dias.
+    for (const page of espnDayPages(src.url, espnPages)) {
+      try {
+        const html = await politeFetch(page, deadline);
+        result.pages++;
+        events.push(...(parserFor(page)?.(html, page) ?? []));
+      } catch (e) {
+        result.note = e instanceof Error ? e.message : String(e);
+        if (e instanceof Skip) break;
+      }
+    }
+    if (!result.pages) return result;
+    result.note = undefined;
+  } else
   try {
     const html = await politeFetch(src.url, deadline);
     result.pages++;
@@ -315,7 +355,7 @@ async function crawlSource(
     organizerId ??= await organizerFor(db, host);
     rows.push({
       source: SITE_SOURCE,
-      external_id: ev.url === src.url ? `${ev.url}#${normalize(ev.name)}|${start.toISOString()}` : ev.url,
+      external_id: ev.externalId ?? (ev.url === src.url ? `${ev.url}#${normalize(ev.name)}|${start.toISOString()}` : ev.url),
       organizer_id: organizerId,
       city_id: ids.cities.get(citySlug)!,
       sport_id: ids.sports.get(sportSlug)!,
@@ -373,7 +413,14 @@ async function crawlSource(
 }
 
 /** Lê os sites cadastrados em crawl_sources e grava os eventos encontrados como pendentes. */
-export async function runCrawl(trigger: "cron" | "admin"): Promise<CrawlSummary> {
+/**
+ * "all": todos os sites (botão do /admin). "sites": todos menos o calendário da ESPN (cron diário).
+ * "futebol": só o calendário da ESPN, com mais páginas (cron próprio, para cobrir 30 dias de jogos).
+ */
+export type CrawlScope = "all" | "sites" | "futebol";
+const ESPN_PAGES_FUTEBOL = 8;
+
+export async function runCrawl(trigger: "cron" | "admin", scope: CrawlScope = "all"): Promise<CrawlSummary> {
   const db = getSupabaseAdmin();
   if (!db) return { ok: false, message: "Falta SUPABASE_SECRET_KEY nas variáveis de ambiente.", sites: [] };
   const keyProblem = checkSecretKey();
@@ -397,14 +444,17 @@ export async function runCrawl(trigger: "cron" | "admin"): Promise<CrawlSummary>
     sports: new Map((sports ?? []).map((s) => [s.slug as string, s.id as number])),
   };
 
-  const { data: run } = await db.from("import_runs").insert({ trigger: `sites-${trigger}` }).select("id").single();
+  const { data: run } = await db.from("import_runs").insert({ trigger: scope === "futebol" ? `futebol-${trigger}` : `sites-${trigger}` }).select("id").single();
   const sites: SiteResult[] = [];
-  for (const src of (sources ?? []) as Source[]) {
+  const chosen = ((sources ?? []) as Source[]).filter((src) =>
+    scope === "all" ? true : scope === "futebol" ? isEspnCalendar(src.url) : !isEspnCalendar(src.url),
+  );
+  for (const src of chosen) {
     if (Date.now() > deadline) {
       sites.push({ url: src.url, pages: 0, found: 0, saved: 0, note: "sem tempo nesta execução; fica para a próxima" });
       continue;
     }
-    const r = await crawlSource(db, src, ids, deadline);
+    const r = await crawlSource(db, src, ids, deadline, scope === "futebol" ? ESPN_PAGES_FUTEBOL : PAGES_PER_SOURCE);
     sites.push(r);
     await db
       .from("crawl_sources")

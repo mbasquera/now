@@ -10,6 +10,6 @@ export async function GET(request: NextRequest) {
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ ok: false, message: "Não autorizado" }, { status: 401 });
   }
-  const summary = await runCrawl("cron");
+  const summary = await runCrawl("cron", "sites");
   return NextResponse.json(summary, { status: summary.ok ? 200 : 500 });
 }

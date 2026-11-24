@@ -15,6 +15,7 @@ export type ParsedEvent = {
   locality?: string;
   sport?: string;
   description?: string;
+  externalId?: string; // quando o link não identifica o jogo sozinho
 };
 
 const ENTITIES: Record<string, string> = { amp: "&", nbsp: " ", quot: '"', apos: "'", lt: "<", gt: ">", middot: "·" };
@@ -374,7 +375,8 @@ export function parseEspn(html: string, pageUrl: string): ParsedEvent[] {
           }
         }
         const league = isObj(node.league) ? s(node.league.name) : undefined;
-        out.set(`${url}|${date}|${a}`, {
+        const key = `espn:${normalize(a)}|${normalize(b)}|${new Date(date).toISOString()}`;
+        out.set(key, {
           name: `${a} x ${b}`,
           startDate: date,
           url,
@@ -382,6 +384,7 @@ export function parseEspn(html: string, pageUrl: string): ParsedEvent[] {
           locality: venue.city,
           sport: "futebol",
           description: league,
+          externalId: url === pageUrl ? key : undefined,
         });
       }
     }
