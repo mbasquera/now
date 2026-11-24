@@ -1,4 +1,4 @@
-import { TEAM_SPORTS, getSport } from "./sports";
+import { TEAM_SPORTS } from "./sports";
 import type { SportEvent, Team } from "./types";
 
 /**
@@ -13,7 +13,3 @@ export function getMatchup(event: SportEvent): { home: Team; away: Team } | null
   return { home: { name: m[1].trim(), logo: null }, away: { name: m[2].trim(), logo: null } };
 }
 
-/** Nome do grupo na lista: o campeonato (importados) ou o esporte (eventos de organizadores). */
-export function getCompetition(event: SportEvent): string {
-  return event.source && event.source !== "manual" ? event.organizerName : getSport(event.sportSlug).name;
-}

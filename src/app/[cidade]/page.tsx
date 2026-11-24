@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { getCity } from "@/lib/cities";
 import { getCityEvents } from "@/lib/data";
 import { getSport } from "@/lib/sports";
-import { getCompetition } from "@/lib/matchup";
 import { dayKey, getLiveState } from "@/lib/time";
 import type { LiveState, SportEvent } from "@/lib/types";
 import { EventRow } from "@/components/EventRow";
@@ -86,16 +85,13 @@ export default async function CityPage({ params, searchParams }: Props) {
   const highlights = live.length ? live : list.filter((x) => x.state === "soon");
   const rest = list.filter((x) => !highlights.includes(x));
 
-  // agrupa por dia e, dentro do dia, por campeonato
-  const groups: { day: string; comps: { name: string; sport: string; items: Item[] }[] }[] = [];
+  // agrupa só por dia, em ordem de horário; esporte, campeonato e fonte aparecem em cada evento
+  const groups: { day: string; items: Item[] }[] = [];
   for (const x of rest) {
     const day = x.state === "live" ? today : x.day;
     let g = groups.find((g) => g.day === day);
-    if (!g) groups.push((g = { day, comps: [] }));
-    const name = getCompetition(x.event);
-    let c = g.comps.find((c) => c.name === name && c.sport === x.event.sportSlug);
-    if (!c) g.comps.push((c = { name, sport: x.event.sportSlug, items: [] }));
-    c.items.push(x);
+    if (!g) groups.push((g = { day, items: [] }));
+    g.items.push(x);
   }
   const dayTitle = (key: string) => {
     const t = days.find((d) => d.key === key);
@@ -202,34 +198,10 @@ export default async function CityPage({ params, searchParams }: Props) {
       {groups.map((g) => (
         <section key={g.day} className="mt-7">
           <h2 className="mb-3 font-display text-2xl font-bold">{dayTitle(g.day)}</h2>
-          <div className="space-y-3">
-            {g.comps.map((c) => {
-              const sport = getSport(c.sport);
-              const logo = c.items.find((x) => x.event.leagueLogo)?.event.leagueLogo;
-              return (
-                <div key={c.name + c.sport} className="overflow-hidden rounded-xl border border-line bg-surface">
-                  <div className="flex items-center gap-2 border-b border-line bg-raised/60 px-3 py-2">
-                    {logo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={logo} alt="" className="h-5 w-5 rounded-sm bg-white object-contain p-0.5" loading="lazy" />
-                    ) : (
-                      <span style={{ color: sport.color }}>
-                        <SportIcon slug={sport.slug} className="h-4.5 w-4.5" />
-                      </span>
-                    )}
-                    <span className="truncate text-sm font-bold">{c.name}</span>
-                    <span className="ml-auto shrink-0 text-xs text-muted">
-                      {c.name === sport.name ? c.items.length : `${sport.name} · ${c.items.length}`}
-                    </span>
-                  </div>
-                  <div className="divide-y divide-line">
-                    {c.items.map(({ event, state }) => (
-                      <EventRow key={event.id} event={event} state={state} now={now} timezone={tz} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+            {g.items.map(({ event, state }) => (
+              <EventRow key={event.id} event={event} state={state} now={now} timezone={tz} />
+            ))}
           </div>
         </section>
       ))}

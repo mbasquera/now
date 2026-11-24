@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { LiveState, SportEvent } from "@/lib/types";
 import { getSport } from "@/lib/sports";
 import { getMatchup } from "@/lib/matchup";
-import { UNKNOWN_VENUE, isImported } from "@/lib/source";
+import { UNKNOWN_VENUE, isImported, sourceDomain } from "@/lib/source";
 import { formatPrice, formatStart, formatTime, minutesUntil } from "@/lib/time";
 import { Crest } from "./Crest";
 import { SportIcon } from "./SportIcon";
@@ -43,6 +43,12 @@ export function EventRow({
   const match = getMatchup(event);
   const venue = event.venueName === UNKNOWN_VENUE ? "Local a confirmar" : event.venueName;
   const price = formatPrice(event);
+  const source = event.source === "api-sports" ? "API-Sports" : sourceDomain(event.sourceUrl);
+  // campeonato só quando a fonte informa um nome próprio (o robô de sites usa o domínio como organizador)
+  const league =
+    isImported(event.source) && event.organizerName && event.organizerName !== sourceDomain(event.sourceUrl)
+      ? event.organizerName
+      : null;
   return (
     <Link
       href={`/evento/${event.id}`}
@@ -80,6 +86,14 @@ export function EventRow({
             <circle cx="12" cy="9.5" r="2.5" />
           </svg>
           <span className="truncate">{venue}</span>
+        </p>
+        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">
+          <span className="font-semibold whitespace-nowrap" style={{ color: sport.color }}>
+            <SportIcon slug={sport.slug} className="mr-1 inline h-3.5 w-3.5 align-[-3px]" />
+            {sport.name}
+          </span>
+          {league && ` · ${league}`}
+          {source && ` · Fonte: ${source}`}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1 text-right">
