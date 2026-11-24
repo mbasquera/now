@@ -187,8 +187,8 @@ export function parseSpCorridas(html: string, pageUrl: string): ParsedEvent[] {
       url: pageUrl,
       venueName: m[5],
       locality: "São Paulo",
-      sport: "corrida",
-      description: `Corrida de rua organizada por ${m[6]} (calendário oficial da Prefeitura de São Paulo).`,
+      sport: /ciclis|pedal|bike/i.test(m[4]) ? "ciclismo" : "corrida",
+      description: `Prova de rua organizada por ${m[6]} (calendário oficial da Prefeitura de São Paulo).`,
     });
   }
   return out;
