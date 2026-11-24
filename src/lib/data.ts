@@ -1,5 +1,6 @@
 import { getMockEvents } from "./mock-data";
 import { getSupabase } from "./supabase/public";
+import { UNKNOWN_VENUE, isImported } from "./source";
 import type { SportEvent } from "./types";
 
 const LOOKAHEAD_DAYS = 7;
@@ -141,7 +142,33 @@ async function fetchCityEvents(citySlug: string, now: Date): Promise<SportEvent[
   let { data, error } = await query();
   if (missingTeamColumns(error)) ({ data, error } = await query());
   if (error) throw error;
-  return (data as unknown as EventRow[]).map(fromRow);
+  return dedupe((data as unknown as EventRow[]).map(fromRow));
+}
+
+/**
+ * O mesmo jogo pode vir de duas fontes (ex.: API-Sports e a agenda da CBV). Eventos importados do mesmo esporte,
+ * na mesma cidade e com início a até 45 min um do outro contam como um só; fica o que informa o local
+ * (e, empatando, o da API), com os escudos do outro se ele não tiver. Eventos de organizadores nunca são escondidos.
+ */
+export function dedupe(events: SportEvent[]): SportEvent[] {
+  const score = (e: SportEvent) => (e.venueName !== UNKNOWN_VENUE ? 2 : 0) + (e.source === "api-sports" ? 1 : 0);
+  const kept: SportEvent[] = [];
+  for (const e of [...events].sort((a, b) => score(b) - score(a))) {
+    const i = !isImported(e.source)
+      ? -1
+      : kept.findIndex(
+          (k) =>
+            isImported(k.source) &&
+            k.source !== e.source &&
+            k.sportSlug === e.sportSlug &&
+            k.citySlug === e.citySlug &&
+            Math.abs(new Date(k.startsAt).getTime() - new Date(e.startsAt).getTime()) <= 45 * 60_000,
+        );
+    if (i < 0) kept.push(e);
+    // o repetido ainda empresta os escudos, se o que ficou não tem
+    else if (!kept[i].home && e.home) kept[i] = { ...kept[i], home: e.home, away: e.away, leagueLogo: e.leagueLogo };
+  }
+  return kept.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 
 export async function getEvent(id: string): Promise<SportEvent | null> {

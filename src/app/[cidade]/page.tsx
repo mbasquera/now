@@ -99,7 +99,13 @@ export default async function CityPage({ params, searchParams }: Props) {
   }
   const dayTitle = (key: string) => {
     const t = days.find((d) => d.key === key);
-    if (!t) return key;
+    if (!t) {
+      // dia fora da faixa de abas (ex.: o 8º dia): formata a data mesmo assim
+      const d = new Date(`${key}T12:00:00Z`);
+      const wd = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", weekday: "short" }).format(d).replace(".", "");
+      const dm = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "2-digit" }).format(d);
+      return `${wd.charAt(0).toUpperCase() + wd.slice(1)} ${dm}`;
+    }
     const date = t.sub.split(" · ")[0];
     return t.label === "Hoje" || t.label === "Amanhã" ? `${t.label}, ${date}` : `${t.label} ${date}`;
   };
