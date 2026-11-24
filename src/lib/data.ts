@@ -172,7 +172,13 @@ export function dedupe(events: SportEvent[]): SportEvent[] {
 }
 
 export async function getEvent(id: string): Promise<SportEvent | null> {
-  const supabase = getSupabase();
+  let supabase: ReturnType<typeof getSupabase>;
+  try {
+    supabase = getSupabase();
+  } catch (e) {
+    console.error("[NOW] Supabase mal configurado:", e);
+    return null;
+  }
   if (supabase && !/^[0-9a-f-]{36}$/i.test(id)) return null;
   if (!supabase) return showMockData ? (getMockEvents().find((e) => e.id === id) ?? null) : null;
 
@@ -203,7 +209,13 @@ export async function getCityPulse(now = new Date()): Promise<Map<string, CityPu
     else p.today++;
     out.set(slug, p);
   };
-  const supabase = getSupabase();
+  let supabase: ReturnType<typeof getSupabase>;
+  try {
+    supabase = getSupabase();
+  } catch (e) {
+    console.error("[NOW] Supabase mal configurado:", e);
+    return out;
+  }
   if (!supabase) {
     if (showMockData)
       getMockEvents(now)
