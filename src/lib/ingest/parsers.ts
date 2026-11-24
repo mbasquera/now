@@ -292,6 +292,105 @@ export function parseIntervals(html: string, pageUrl: string, capitals: { name: 
 }
 
 /** Leitor específico para a página, se houver. */
+// ---------- ESPN (calendário de futebol, reserva da API) ----------
+
+type Obj = Record<string, unknown>;
+const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
+const s = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+
+/** Os dados que a própria página da ESPN usa para se montar (window['__espnfitt__'] = {...}). */
+function espnData(html: string): unknown[] {
+  const out: unknown[] = [];
+  for (const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
+    const j = m[1].match(/__espnfitt__['"]?\]?\s*=\s*(\{[\s\S]*\})\s*;?\s*$/);
+    if (!j) continue;
+    try {
+      out.push(JSON.parse(j[1]));
+    } catch {
+      // formato mudou: ignora
+    }
+  }
+  return out;
+}
+
+function teamOf(c: unknown): string | undefined {
+  if (!isObj(c)) return undefined;
+  const t = isObj(c.team) ? c.team : c;
+  return s(t.displayName) ?? s(t.name) ?? s(t.shortDisplayName);
+}
+
+/** Estádio e cidade: só aceita quando a ESPN diz que é no Brasil. */
+function venueOf(v: unknown): { venueName: string; city: string } | null {
+  let name: string | undefined, city: string | undefined, country: string | undefined;
+  if (typeof v === "string") {
+    const parts = v.split(",").map((x) => x.trim()).filter(Boolean);
+    if (parts.length < 3) return null;
+    country = parts.pop();
+    city = parts.pop();
+    name = parts.join(", ");
+  } else if (isObj(v)) {
+    const a = isObj(v.address) ? v.address : {};
+    name = s(v.fullName) ?? s(v.name) ?? s(v.displayName);
+    city = s(a.city);
+    country = s(a.country);
+  }
+  if (!name || !city || !country || !/^bra[sz]il$/.test(normalize(country))) return null;
+  return { venueName: name, city };
+}
+
+/**
+ * Página de calendário de futebol da ESPN. Lê os jogos dos dados da própria página: horário em UTC (sem dúvida de fuso),
+ * os dois times e o estádio com cidade e país. Jogo fora do Brasil, sem estádio, adiado ou cancelado fica de fora.
+ * Se a ESPN mudar o formato, não acha nada.
+ */
+export function parseEspn(html: string, pageUrl: string): ParsedEvent[] {
+  const out = new Map<string, ParsedEvent>();
+  const base = new URL(pageUrl);
+  const visit = (node: unknown, depth: number) => {
+    if (depth > 40) return;
+    if (Array.isArray(node)) {
+      for (const n of node) visit(n, depth + 1);
+      return;
+    }
+    if (!isObj(node)) return;
+    const date = s(node.date);
+    const comps = node.competitors;
+    if (date && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/.test(date) && Array.isArray(comps) && comps.length === 2) {
+      const venue = venueOf(node.venue);
+      const status = JSON.stringify(node.status ?? "").toLowerCase();
+      const off = /postpon|aplazad|adiad|cancel|suspend/.test(status);
+      const home = comps.find((c) => isObj(c) && (c.isHome === true || c.homeAway === "home")) ?? comps[0];
+      const away = comps.find((c) => c !== home);
+      const a = teamOf(home), b = teamOf(away);
+      if (venue && !off && a && b) {
+        let url = pageUrl;
+        const link = s(node.link) ?? s(node.href);
+        if (link) {
+          try {
+            const u = new URL(link, base);
+            if (u.host === base.host) url = u.toString();
+          } catch {
+            // link inválido: fica a página do calendário
+          }
+        }
+        const league = isObj(node.league) ? s(node.league.name) : undefined;
+        out.set(`${url}|${date}|${a}`, {
+          name: `${a} x ${b}`,
+          startDate: date,
+          url,
+          venueName: venue.venueName,
+          locality: venue.city,
+          sport: "futebol",
+          description: league,
+        });
+      }
+    }
+    for (const v of Object.values(node)) if (v && typeof v === "object") visit(v, depth + 1);
+  };
+  for (const d of espnData(html)) visit(d, 0);
+  return [...out.values()];
+}
+
 export function parserFor(url: string): ((html: string, url: string) => ParsedEvent[]) | null {
   const u = new URL(url);
   if (u.host.endsWith("lnfoficial.com.br") && u.pathname.includes("tabela-de-jogos")) return parseLnf;
@@ -300,5 +399,7 @@ export function parserFor(url: string): ((html: string, url: string) => ParsedEv
   if (u.host.endsWith("prefeitura.poa.br") && u.pathname.includes("corridas-de-rua")) return parsePoaCorridas;
   if (u.host.endsWith("intervals.icu") && u.pathname.startsWith("/events/BR/"))
     return (h, p) => parseIntervals(h, p, CITIES.map((c) => ({ name: c.name, uf: c.uf })));
+  if (/(^|\.)espn(deportes)?\.com(\.br)?$/.test(u.host) && /\/(futbol|futebol)\/(calendario|agenda)/.test(u.pathname))
+    return parseEspn;
   return null;
 }
