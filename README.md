@@ -88,7 +88,9 @@ Em `/admin > Sites lidos pelo robô` você cadastra páginas públicas de evento
 - só aceita eventos com data, cidade de capital (`addressLocality`) e esporte reconhecível (pelo nome ou pelo esporte padrão do site);
 - grava os eventos já **aprovados**, com o link da página como fonte (a moderação fica só para divulgações de organizadores; um evento que o admin recusou continua recusado).
 
-Rode `supabase/migrations/0007_estadios.sql`, `0008_sites.sql`, `0009_sites_oficiais.sql` (cadastra os sites oficiais) e `0010_aprovar_importados.sql` (aprova os eventos de sites que estavam pendentes) antes de usar. A `0012_mais_esportes.sql` cria corrida, ciclismo, triatlo, handebol e rugby e cadastra as fontes desses esportes. A `0013_natacao.sql` cria natação e troca as listas separadas do intervals.icu pela lista completa.
+Rode `supabase/migrations/0007_estadios.sql`, `0008_sites.sql`, `0009_sites_oficiais.sql` (cadastra os sites oficiais) e `0010_aprovar_importados.sql` (aprova os eventos de sites que estavam pendentes) antes de usar. A `0012_mais_esportes.sql` cria corrida, ciclismo, triatlo, handebol e rugby e cadastra as fontes desses esportes. A `0013_natacao.sql` cria natação e troca as listas separadas do intervals.icu pela lista completa. A `0014_espn_futebol.sql` cadastra o calendário de futebol da ESPN como reserva da API (sem chave): o leitor usa os dados da própria página (horário em UTC, times, estádio, cidade e país) e só aceita jogos no Brasil em capitais; se a página mudar, não importa nada.
+
+Fontes de futebol sem API que foram avaliadas e não servem hoje: tabela da Série A no site da CBF (carrega por JavaScript), SmartCalendars e FotMob (proíbem robôs). Várzea: não há base pública; Jogos da Cidade (Prefeitura de SP) publica a tabela em imagem. Jogos de várzea entram pelo cadastro de organizadores.
 
 Atletismo de pista: o calendário da CBAt (competicoes.cbat.org.br) só mostra as tabelas com JavaScript, então o robô não consegue ler (pesquisado em 23/11/2026).
 
